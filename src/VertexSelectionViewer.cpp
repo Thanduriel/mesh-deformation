@@ -1,4 +1,5 @@
 #include "VertexSelectionViewer.hpp"
+#include "algorithms/deformation.hpp"
 
 using namespace pmp;
 
@@ -46,6 +47,40 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			update_mesh();
 		}
 		break;
+	}
+	case GLFW_KEY_T:
+	{
+		static algorithm::Deformation deformation(mesh_);
+		static bool init = true;
+
+		if (init)
+		{
+			init = false;
+			auto points = mesh_.get_vertex_property<Point>("v:point");
+			auto colors = mesh_.get_vertex_property<Color>("v:col");
+			std::vector<Vertex> supportVertices;
+			std::vector<Vertex> handleVertices;
+			std::vector<Vertex> boundaryVertices;
+			for (Vertex v : mesh_.vertices())
+			{
+				if (points[v][2] > 80.0)
+				{
+					colors[v] = Color(0.0, 1.0, 0.0);
+					handleVertices.push_back(v);
+				}
+				else if (points[v][2] > 0.0)
+				{
+					colors[v] = Color(0.0, 0.0, 1.0);
+					supportVertices.push_back(v);
+				}
+				else
+					boundaryVertices.push_back(v);
+			}
+			deformation.set_regions(supportVertices, handleVertices, boundaryVertices);
+		}
+		else deformation.translate(Normal(0.0, 0.0, 10.0));
+
+		update_mesh();
 	}
 	default:
 	{

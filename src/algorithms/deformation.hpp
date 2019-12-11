@@ -13,12 +13,15 @@ namespace algorithm {
 			const std::vector<pmp::Vertex>& handleVertices,
 			const std::vector<pmp::Vertex>& boundaryVertices);
 
-		void translate(const pmp::dvec3& translation);
-		void scale(double scale);
-		void rotate(const pmp::dvec3& axis, double angle);
+		void translate(const pmp::Normal& translation);
+		void scale(pmp::Scalar scale);
+		void rotate(const pmp::Normal& axis, pmp::Scalar angle);
 	private:
-		pmp::SurfaceMesh& mesh_;
+		void update_support_region();
 
-		// todo:
+		pmp::SurfaceMesh& mesh_;
+		std::vector<pmp::Vertex> supportVertices_;
+		std::vector<pmp::Vertex> handleVertices_;
+		std::vector<pmp::Vertex> boundaryVertices_;
 	};
 }

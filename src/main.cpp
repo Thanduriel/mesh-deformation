@@ -1,8 +1,14 @@
 #include "pmp/visualization/MeshViewer.h"
+#include "pmp/algorithms/SurfaceSmoothing.h"
+#include "VertexSelectionViewer.hpp"
 
 int main()
 {
 	using namespace pmp;
-	MeshViewer window("hello world!", 1366, 768);
+
+	const std::string meshFile = "../models/apple.off";
+	VertexSelectionViewer window("hello world! Test", 1366, 768);
+	window.load_mesh(meshFile.c_str());
 	window.run();
+	return 0;
 }

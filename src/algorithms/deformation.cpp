@@ -11,16 +11,33 @@ namespace algorithm {
 	using Triplet = Eigen::Triplet<double>;
 
 	Deformation::Deformation(SurfaceMesh& mesh)
-		: mesh_(mesh)
-	{}
+		: mesh_(mesh),
+		typeMarks_(mesh_.add_vertex_property<VertexType>("v:typeMarks", VertexType::None)),
+		idx_(mesh_.add_vertex_property<int>("v:idx", -1))
+	{
+	}
+
+	Deformation::~Deformation()
+	{
+		mesh_.remove_vertex_property(typeMarks_);
+		mesh_.remove_vertex_property(idx_);
+	}
 
 	void Deformation::set_regions(const std::vector<Vertex>& supportVertices, 
-		const std::vector<Vertex>& handleVertices,
-		const std::vector<Vertex>& boundaryVertices)
+		const std::vector<Vertex>& handleVertices)
 	{
 		supportVertices_ = supportVertices;
 		handleVertices_ = handleVertices;
-		boundaryVertices_ = boundaryVertices;
+
+		int index = 0;
+		for (Vertex v : supportVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Support; }
+		for (Vertex v : handleVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Handle; }
+		compute_boundary_set();
+		for (Vertex v : boundaryVertices_) { idx_[v] = index++; }
+
+		// save old points to restore before setting up a new matrix
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+		for (Vertex v : supportVertices_) supportVertexPoints_.push_back(points[v]);
 	}
 
 	void Deformation::translate(const pmp::Normal& translation)
@@ -42,15 +59,9 @@ namespace algorithm {
 	{
 		assert(supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size());
 		auto points = mesh_.get_vertex_property<Point>("v:point");
-		auto idx = mesh_.add_vertex_property<int>("v:idx", -1);
+		// restore orginal mesh
+		for (Vertex v : supportVertices_) points[v] = supportVertexPoints_[idx_[v]];
 
-		enum struct Type { None, Support, Handle, Boundry };
-		auto marked = mesh_.add_vertex_property<Type>("v:marked", Type::None);
-
-		int index = 0;
-		for (Vertex v : supportVertices_) { idx[v] = index++; marked[v] = Type::Support; }
-		for (Vertex v : handleVertices_) { idx[v] = index++; marked[v] = Type::Handle; }
-		for (Vertex v : boundaryVertices_) { idx[v] = index++; marked[v] = Type::Boundry; }
 		const std::size_t numFree = supportVertices_.size();
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
@@ -66,18 +77,14 @@ namespace algorithm {
 			for (auto h : mesh_.halfedges(v))
 			{
 				const Vertex vv = mesh_.to_vertex(h);
-				// maybe: still sum up
-				if (marked[vv] == Type::None) continue;
-
 				const Scalar weight = cotan_weight(mesh_, mesh_.edge(h)) * a;
 				sumWeights += weight;
-				if (marked[vv] == Type::Support)
-					tripletsL1.emplace_back(i, idx[vv], weight);
+				if (typeMarks_[vv] == VertexType::Support)
+					tripletsL1.emplace_back(i, idx_[vv], weight);
 				else
-					tripletsL2.emplace_back(i, idx[vv] - numFree, weight);
+					tripletsL2.emplace_back(i, idx_[vv] - numFree, weight);
 			}
-			// maybe: 1.0/a in every factor
-			tripletsL1.emplace_back(i, idx[v],  - sumWeights);
+			tripletsL1.emplace_back(i, idx_[v],  - sumWeights);
 		}
 		SparseMatrix L1(numFree, numFree);
 		L1.setFromTriplets(tripletsL1.begin(), tripletsL1.end());
@@ -88,7 +95,7 @@ namespace algorithm {
 		MatrixXd x2(numFixed, 3);
 		for (Vertex v : handleVertices_)
 		{
-			const int i = idx[v] - numFree;
+			const int i = idx_[v] - numFree;
 			const Point p = points[v];
 			x2(i, 0) = p[0];
 			x2(i, 1) = p[1];
@@ -96,7 +103,7 @@ namespace algorithm {
 		}
 		for (Vertex v : boundaryVertices_)
 		{
-			const int i = idx[v] - numFree;
+			const int i = idx_[v] - numFree;
 			const Point p = points[v];
 			x2(i, 0) = p[0];
 			x2(i, 1) = p[1];
@@ -117,10 +124,23 @@ namespace algorithm {
 				points[supportVertices_[i]][2] = X(i, 2);
 			}
 		}
+	}
 
-		// clean-up
-		// todo: move to destructor
-		mesh_.remove_vertex_property(idx);
-		mesh_.remove_vertex_property(marked);
+	void Deformation::compute_boundary_set()
+	{
+		boundaryVertices_.clear();
+
+		for (Vertex v : supportVertices_)
+		{
+			for (auto h : mesh_.halfedges(v))
+			{
+				const Vertex vv = mesh_.to_vertex(h);
+				if (typeMarks_[vv] == VertexType::None)
+				{
+					typeMarks_[vv] = VertexType::Boundary;
+					boundaryVertices_.push_back(vv);
+				}
+			}
+		}
 	}
 }

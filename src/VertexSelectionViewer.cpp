@@ -60,7 +60,6 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			auto colors = mesh_.get_vertex_property<Color>("v:col");
 			std::vector<Vertex> supportVertices;
 			std::vector<Vertex> handleVertices;
-			std::vector<Vertex> boundaryVertices;
 			for (Vertex v : mesh_.vertices())
 			{
 				if (points[v][2] > 80.0)
@@ -73,12 +72,10 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 					colors[v] = Color(0.0, 0.0, 1.0);
 					supportVertices.push_back(v);
 				}
-				else
-					boundaryVertices.push_back(v);
 			}
-			deformation.set_regions(supportVertices, handleVertices, boundaryVertices);
+			deformation.set_regions(supportVertices, handleVertices);
 		}
-		else deformation.translate(Normal(0.0, 0.0, 10.0));
+		else deformation.translate(Normal(0.0, 0.0, 1.0));
 
 		update_mesh();
 	}

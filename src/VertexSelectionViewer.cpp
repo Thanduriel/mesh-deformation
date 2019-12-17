@@ -4,7 +4,8 @@
 using namespace pmp;
 
 VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int height, bool showgui)
-	: TrackballViewer(title, width, height, showgui), pickPosition_(0, 0, 0), pickVertex_(0)
+	: TrackballViewer(title, width, height, showgui), pickPosition_(0, 0, 0), pickVertex_(0), isVertexTranslationActive_(false),
+	brushSize_(20)
 {
 	clear_draw_modes();
 	add_draw_mode("Smooth Shading");
@@ -22,6 +23,7 @@ void VertexSelectionViewer::draw(const std::string& draw_mode)
 
 void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods)
 {
+	isVertexTranslationActive_ = false;
 	if (action != GLFW_PRESS && action != GLFW_REPEAT)
 		return;
 
@@ -39,12 +41,13 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		double x = 0;
 		double y = 0;
 		cursor_pos(x, y);
-		auto v = pick_vertex(x, y);
+		auto vVector = pick_vertex(x, y, brushSize_);
 
-		if (v.is_valid())
+		if (!vVector.empty())
 		{
 			auto vProp = mesh_.get_vertex_property<Color>("v:col");
-			vProp[v] = Color(0, 0, 1);
+			for (auto v : vVector)
+				vProp[v] = Color(0, 0, 1);
 			update_mesh();
 		}
 		break;
@@ -55,12 +58,13 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		double x = 0;
 		double y = 0;
 		cursor_pos(x, y);
-		auto v = pick_vertex(x, y);
+		auto vVector = pick_vertex(x, y, brushSize_);
 
-		if (v.is_valid())
+		if (!vVector.empty())
 		{
 			auto vProp = mesh_.get_vertex_property<Color>("v:col");
-			vProp[v] = Color(0, 1, 0);
+			for (auto v : vVector)
+				vProp[v] = Color(0, 1, 0);
 			update_mesh();
 		}
 		break;
@@ -107,6 +111,8 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	{
 		if (deformationSpace_ != nullptr)
 			deformationSpace_->translate(Normal(0.0, 0.0, 1.0));
+
+		isVertexTranslationActive_ = true;
 		update_mesh();
 		break;
 	}
@@ -187,6 +193,19 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 	return false;
 }
 
+void VertexSelectionViewer::motion(double xpos, double ypos)
+{
+	if (isVertexTranslationActive_)
+	{
+
+	}
+	else
+	{
+		TrackballViewer::motion(xpos, ypos);
+	}
+
+}
+
 Vertex VertexSelectionViewer::pick_vertex(int x, int y)
 {
 	Vertex vmin;
@@ -210,6 +229,28 @@ Vertex VertexSelectionViewer::pick_vertex(int x, int y)
 	return vmin;
 }
 
+std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radius)
+{
+	std::vector<Vertex> vVector;
+
+	vec3 p;
+	Scalar d;
+
+	if (TrackballViewer::pick(x, y, p))
+	{
+		Point picked_position(p);
+		for (auto v : mesh_.vertices())
+		{
+			d = distance(mesh_.position(v), picked_position);
+			if (d < radius)
+			{
+				vVector.push_back(v);
+			}
+		}
+	}
+	return vVector;
+}
+
 void VertexSelectionViewer::process_imgui()
 {
 	if (ImGui::CollapsingHeader("MousePosition", ImGuiTreeNodeFlags_DefaultOpen))
@@ -218,6 +259,7 @@ void VertexSelectionViewer::process_imgui()
 		ImGui::BulletText("%f X:", pickPosition_[0]);
 		ImGui::BulletText("%f Y:", pickPosition_[1]);
 		ImGui::BulletText("%f Z:", pickPosition_[2]);
+		ImGui::SliderFloat("%f BrushSize:", &brushSize_, 10.0, 100.0);
 	}
 }
 

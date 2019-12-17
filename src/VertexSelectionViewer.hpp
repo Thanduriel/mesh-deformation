@@ -17,17 +17,25 @@ public:
 	//! load a mesh from file \c filename
 	bool load_mesh(const char* filename);
 
+	void motion(double xpos, double ypos) override;
+
 	void keyboard(int key, int scancode, int action, int mods) override;
 
 	pmp::Vertex pick_vertex(int x, int y);
+
+	std::vector<Vertex> pick_vertex(int x, int y, float radius);
 
 	void process_imgui() override;
 
 	void update_mesh();
 
 private:
+	float brushSize_;
  	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;	
+	bool isVertexTranslationActive_;
+	pmp::vec3 translationNormal_;
+
 	SurfaceColorMesh mesh_;
 	pmp::vec3 pickPosition_;
 	pmp::Vertex pickVertex_;

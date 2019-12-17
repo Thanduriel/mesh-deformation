@@ -18,7 +18,7 @@ namespace algorithm {
 		void rotate(const pmp::Normal& axis, pmp::Scalar angle);
 	private:
 		void update_support_region();
-		void compute_boundary_set();
+		void compute_boundary_set(int ringSize);
 
 		enum struct VertexType { None, Support, Handle, Boundary };
 

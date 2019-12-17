@@ -32,7 +32,7 @@ namespace algorithm {
 		int index = 0;
 		for (Vertex v : supportVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Support; }
 		for (Vertex v : handleVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Handle; }
-		compute_boundary_set();
+		compute_boundary_set(2); // k + 1
 		for (Vertex v : boundaryVertices_) { idx_[v] = index++; }
 
 		// save old points to restore before setting up a new matrix
@@ -126,11 +126,11 @@ namespace algorithm {
 		}
 	}
 
-	void Deformation::compute_boundary_set()
+	void Deformation::compute_boundary_set(int ringSize)
 	{
 		boundaryVertices_.clear();
 
-		for (Vertex v : supportVertices_)
+		auto markNeigbhours = [this](Vertex v)
 		{
 			for (auto h : mesh_.halfedges(v))
 			{
@@ -141,6 +141,17 @@ namespace algorithm {
 					boundaryVertices_.push_back(vv);
 				}
 			}
+		};
+
+		for (Vertex v : supportVertices_) markNeigbhours(v);
+
+		size_t begin = 0;
+		for (int j = 0; j < ringSize-1; ++j)
+		{
+			const size_t end = boundaryVertices_.size();
+			for (size_t i = begin; i < end; ++i)
+				markNeigbhours(boundaryVertices_[i]);
+			begin = end;
 		}
 	}
 }

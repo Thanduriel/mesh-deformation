@@ -24,7 +24,6 @@ namespace algorithm {
 
 		pmp::SurfaceMesh& mesh_;
 		std::vector<pmp::Vertex> supportVertices_;
-		std::vector<pmp::Point> supportVertexPoints_;
 		std::vector<pmp::Vertex> handleVertices_;
 		std::vector<pmp::Vertex> boundaryVertices_;
 		

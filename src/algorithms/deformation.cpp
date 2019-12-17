@@ -37,7 +37,6 @@ namespace algorithm {
 
 		// save old points to restore before setting up a new matrix
 		auto points = mesh_.get_vertex_property<Point>("v:point");
-		for (Vertex v : supportVertices_) supportVertexPoints_.push_back(points[v]);
 	}
 
 	void Deformation::translate(const pmp::Normal& translation)
@@ -59,9 +58,7 @@ namespace algorithm {
 	{
 		assert(supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size());
 		auto points = mesh_.get_vertex_property<Point>("v:point");
-		// restore orginal mesh
-		for (Vertex v : supportVertices_) points[v] = supportVertexPoints_[idx_[v]];
-
+	
 		const std::size_t numFree = supportVertices_.size();
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
@@ -72,7 +69,7 @@ namespace algorithm {
 		{
 			const Vertex v = supportVertices_[i];
 
-			const Scalar a = Scalar(1.0) / (Scalar(2.0) * voronoi_area(mesh_, v));
+			const Scalar a = 1.0;//Scalar(1.0) / (Scalar(2.0) * voronoi_area(mesh_, v));
 			Scalar sumWeights = 0.0;
 			for (auto h : mesh_.halfedges(v))
 			{

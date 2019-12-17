@@ -34,7 +34,7 @@ private:
  	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;	
 	bool isVertexTranslationActive_;
-	pmp::vec3 translationNormal_;
+	pmp::Normal translationNormal_;
 
 	SurfaceColorMesh mesh_;
 	pmp::vec3 pickPosition_;

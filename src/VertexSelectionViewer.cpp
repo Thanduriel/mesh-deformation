@@ -1,5 +1,6 @@
 #include "VertexSelectionViewer.hpp"
 #include "algorithms/deformation.hpp"
+#include <pmp/algorithms/SurfaceNormals.h>
 
 using namespace pmp;
 
@@ -91,12 +92,16 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		auto colors = mesh_.get_vertex_property<Color>("v:col");
 		std::vector<Vertex> supportVertices;
 		std::vector<Vertex> handleVertices;
+		pmp::Normal normal(0, 0, 0);
+		int normalIndex = 0;
 
 		for (Vertex v : mesh_.vertices())
 		{
 			if (colors[v] == Color(0, 1, 0))
 			{
 				handleVertices.push_back(v);
+				normal += SurfaceNormals::compute_vertex_normal(mesh_, v);
+				normalIndex++;
 			}
 			else if (colors[v] == Color(0, 0, 1))
 			{
@@ -104,16 +109,21 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			}
 		}
 
+		normal.normalize();
+		translationNormal_ = normal;
+
 		deformationSpace_->set_regions(supportVertices, handleVertices);
 		break;
 	}
 	case GLFW_KEY_SPACE:
 	{
 		if (deformationSpace_ != nullptr)
-			deformationSpace_->translate(Normal(0.0, 0.0, 1.0));
+		{
+			deformationSpace_->translate(this->translationNormal_);
+			update_mesh();
+		}
 
 		isVertexTranslationActive_ = true;
-		update_mesh();
 		break;
 	}
 	case GLFW_KEY_T:
@@ -197,7 +207,13 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 {
 	if (isVertexTranslationActive_)
 	{
-
+		if (ypos > 0)
+		{
+			float dy = (last_point_2d_[1] - ypos) * 0.1f;
+			//deformationSpace_->translate(this->translationNormal_ * dy);
+ 			update_mesh();
+		}
+		last_point_2d_ = ivec2(xpos, ypos);
 	}
 	else
 	{

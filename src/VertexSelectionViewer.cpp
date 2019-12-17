@@ -30,15 +30,32 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	case GLFW_KEY_BACKSPACE: // reload model
 	{
 		load_mesh(filename_.c_str());
+		deformationSpace_.reset(nullptr);
 		break;
 	}
-	case GLFW_KEY_SPACE:
+	case GLFW_KEY_W: //support region
 	{
 		TrackballViewer::pick(pickPosition_);
 		double x = 0;
 		double y = 0;
 		cursor_pos(x, y);
-		auto v = pick_vertex(x,y);
+		auto v = pick_vertex(x, y);
+
+		if (v.is_valid())
+		{
+			auto vProp = mesh_.get_vertex_property<Color>("v:col");
+			vProp[v] = Color(0, 0, 1);
+			update_mesh();
+		}
+		break;
+	}
+	case GLFW_KEY_Q: //handle region
+	{
+		TrackballViewer::pick(pickPosition_);
+		double x = 0;
+		double y = 0;
+		cursor_pos(x, y);
+		auto v = pick_vertex(x, y);
 
 		if (v.is_valid())
 		{
@@ -46,6 +63,51 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			vProp[v] = Color(0, 1, 0);
 			update_mesh();
 		}
+		break;
+	}
+	case GLFW_KEY_R:
+	{
+		TrackballViewer::pick(pickPosition_);
+		double x = 0;
+		double y = 0;
+		cursor_pos(x, y);
+		auto v = pick_vertex(x, y);
+
+		if (v.is_valid())
+		{
+			auto vProp = mesh_.get_vertex_property<Color>("v:col");
+			vProp[v] = Color(1, 0, 0);
+			update_mesh();
+		}
+		break;
+	}
+	case GLFW_KEY_I:
+	{
+		deformationSpace_ = std::make_unique<algorithm::Deformation>(mesh_);
+		auto colors = mesh_.get_vertex_property<Color>("v:col");
+		std::vector<Vertex> supportVertices;
+		std::vector<Vertex> handleVertices;
+
+		for (Vertex v : mesh_.vertices())
+		{
+			if (colors[v] == Color(0, 1, 0))
+			{
+				handleVertices.push_back(v);
+			}
+			else if (colors[v] == Color(0, 0, 1))
+			{
+				supportVertices.push_back(v);
+			}
+		}
+
+		deformationSpace_->set_regions(supportVertices, handleVertices);
+		break;
+	}
+	case GLFW_KEY_SPACE:
+	{
+		if (deformationSpace_ != nullptr)
+			deformationSpace_->translate(Normal(0.0, 0.0, 1.0));
+		update_mesh();
 		break;
 	}
 	case GLFW_KEY_T:

@@ -5,15 +5,15 @@
 namespace algorithm {
 
 	using namespace pmp;
-	using namespace Eigen;
 
-	using SparseMatrix = Eigen::SparseMatrix<double>;
 	using Triplet = Eigen::Triplet<double>;
+	using DenseMatrix = Eigen::MatrixXd;
+		//Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::AutoAlign | Eigen::RowMajor>;
 
 	Deformation::Deformation(SurfaceMesh& mesh)
 		: mesh_(mesh),
 		typeMarks_(mesh_.add_vertex_property<VertexType>("v:typeMarks", VertexType::None)),
-		idx_(mesh_.add_vertex_property<int>("v:idx", -1))
+		idx_(mesh_.add_vertex_property<int>("v:newIdx", -1))
 	{
 	}
 
@@ -33,7 +33,7 @@ namespace algorithm {
 		for (Vertex v : supportVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Support; }
 		for (Vertex v : handleVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Handle; }
 		compute_boundary_set(2); // k + 1
-		for (Vertex v : boundaryVertices_) { idx_[v] = index++; }
+		for (Vertex v : boundaryVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Boundary; }
 
 		compute_laplace();
 	}
@@ -61,7 +61,7 @@ namespace algorithm {
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
 		// build right side B
-		MatrixXd x2(numFixed, 3);
+		DenseMatrix x2(numFixed, 3);
 		for (Vertex v : handleVertices_)
 		{
 			const int i = idx_[v] - numFree;
@@ -79,9 +79,9 @@ namespace algorithm {
 			x2(i, 2) = p[2];
 		}
 
-		const MatrixXd B = /*areaScale_ **/ -laplace2_ * x2;
-		SimplicialLDLT<SparseMatrix> solver(laplace1_);
-		const Eigen::MatrixXd X = solver.solve(B);
+		const DenseMatrix B = /*areaScale_ **/ -laplace2_ * x2;
+		Eigen::SimplicialLDLT<SparseMatrix> solver(laplace1_);
+		const DenseMatrix X = solver.solve(B);
 		if (solver.info() != Eigen::Success)
 			std::cerr << "Deformation: Could not solve linear system\n";
 		else 
@@ -102,45 +102,75 @@ namespace algorithm {
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 		auto areas = mesh_.add_face_property<Scalar>("f:area");
 
-	//	for (Face f : mesh_.faces()) areas[f] = triangle_area(mesh_, f);
+		// compute weights
+		auto vweights = mesh_.add_vertex_property<Scalar>("v:area");
+		for (Vertex v : mesh_.vertices()) vweights[v] = 0.5 / voronoi_area(mesh_, v);
 
-		const std::size_t numFree = supportVertices_.size();
-		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
+		auto eweights = mesh_.add_edge_property<Scalar>("e:cotan");
+		for (Edge e : mesh_.edges()) eweights[e] = std::max(0.0, cotan_weight(mesh_, e));
 
-		// construct Laplace operator matrix L
-		std::vector<Triplet> tripletsL1;
-		std::vector<Triplet> tripletsL2;
+		auto meshIdx = mesh_.add_vertex_property<int>("v:meshIdx");
+		int index = 0;
+		for (Vertex v : mesh_.vertices()) meshIdx[v] = index++;
+
+		const int numFree = supportVertices_.size();
+		const int numFixed = handleVertices_.size() + boundaryVertices_.size();
+
+		// construct Laplace operator matrix L and area weights M
+		std::vector<Triplet> tripletsL;
 		std::vector<Triplet> tripletsArea;
-		for (std::size_t i = 0; i < numFree; ++i)
+		for (Vertex v : mesh_.vertices())
 		{
-			const Vertex v = supportVertices_[i];
-
-		//	Scalar a = 0.0;
-		//	for (Face f : mesh_.faces(v)) a += triangle_area(mesh_, f) / 3.0;
-			const Scalar a = 1.0 / (2.0 * voronoi_area(mesh_, v));
-			tripletsArea.emplace_back(i, i, 1/a);
+			tripletsArea.emplace_back(meshIdx[v], meshIdx[v], vweights[v]);
 			Scalar sumWeights = 0.0;
 			for (auto h : mesh_.halfedges(v))
 			{
 				const Vertex vv = mesh_.to_vertex(h);
-				const Scalar weight = std::max(0.0, cotan_weight(mesh_, mesh_.edge(h)));
+				const Scalar weight = eweights[mesh_.edge(h)];
 				sumWeights += weight;
-				if (typeMarks_[vv] == VertexType::Support)
-					tripletsL1.emplace_back(i, idx_[vv], weight);
-				else
-					tripletsL2.emplace_back(i, idx_[vv] - numFree, weight);
+				tripletsL.emplace_back(meshIdx[v], meshIdx[vv], weight);
 			}
-			tripletsL1.emplace_back(i, idx_[v], -sumWeights);
+			tripletsL.emplace_back(meshIdx[v], meshIdx[v], -sumWeights);
 		}
+
+		// use row major to allow for quicker extraction of L1 and L2
+		using SparseMatrixR = Eigen::SparseMatrix<double, Eigen::RowMajor>;
+		SparseMatrixR L(mesh_.n_vertices(), mesh_.n_vertices());
+		L.setFromTriplets(tripletsL.begin(), tripletsL.end());
+		SparseMatrix M(mesh_.n_vertices(), mesh_.n_vertices());
+		M.setFromTriplets(tripletsArea.begin(), tripletsArea.end());
+		areaScale_ = std::move(M);
+		// need other solver if this is used!!!
+//		L = M * L;
+
+		// extract submatrix of marked regions and reorder acording to idx_
+		std::vector<Triplet> tripletsL1;
+		std::vector<Triplet> tripletsL2;
+		for (std::size_t i = 0; i < numFree; ++i)
+		{
+			int freeCount = 0;
+			int fixedCount = 0;
+			for (SparseMatrixR::InnerIterator it(L, meshIdx[supportVertices_[i]]); it; ++it)
+			{
+				const Vertex v(it.col());
+				const int id = idx_[v];
+				if (typeMarks_[v] == VertexType::Support)
+				{
+					tripletsL1.emplace_back(i, id, it.value());
+				}
+				else if(typeMarks_[v] != VertexType::None)
+					tripletsL2.emplace_back(i, id - numFree, it.value());
+			}
+		}
+
 		SparseMatrix L1(numFree, numFree);
 		L1.setFromTriplets(tripletsL1.begin(), tripletsL1.end());
 		laplace1_ = std::move(L1);
 		SparseMatrix L2(numFree, numFixed);
 		L2.setFromTriplets(tripletsL2.begin(), tripletsL2.end());
 		laplace2_ = std::move(L2);
-		SparseMatrix M(numFree, numFree);
-		M.setFromTriplets(tripletsArea.begin(), tripletsArea.end());
-		areaScale_ = std::move(M);
+
+		mesh_.remove_vertex_property(meshIdx);
 	}
 
 	void Deformation::compute_boundary_set(int ringSize)

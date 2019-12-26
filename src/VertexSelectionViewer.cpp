@@ -275,7 +275,8 @@ void VertexSelectionViewer::process_imgui()
 		ImGui::BulletText("%f X:", pickPosition_[0]);
 		ImGui::BulletText("%f Y:", pickPosition_[1]);
 		ImGui::BulletText("%f Z:", pickPosition_[2]);
-		ImGui::SliderFloat("%f BrushSize:", &brushSize_, 0.01, 1.0);
+		const BoundingBox bb = mesh_.bounds();
+		ImGui::SliderFloat("%f BrushSize:", &brushSize_, 0.01, bb.size());
 	}
 }
 

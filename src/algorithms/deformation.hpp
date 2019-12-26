@@ -32,8 +32,9 @@ namespace algorithm {
 		pmp::VertexProperty<VertexType> typeMarks_;
 		pmp::VertexProperty<int> idx_;
 
-		Eigen::SparseMatrix<double> laplace1_;
-		Eigen::SparseMatrix<double> laplace2_;
-		Eigen::SparseMatrix<double> areaScale_;
+		using SparseMatrix = Eigen::SparseMatrix<double>;
+		SparseMatrix laplace1_;
+		SparseMatrix laplace2_;
+		SparseMatrix areaScale_;
 	};
 }

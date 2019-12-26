@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pmp/SurfaceMesh.h>
+#include <Eigen/Sparse>
 
 namespace algorithm {
 
@@ -18,6 +19,7 @@ namespace algorithm {
 		void rotate(const pmp::Normal& axis, pmp::Scalar angle);
 	private:
 		void update_support_region();
+		void compute_laplace();
 		void compute_boundary_set(int ringSize);
 
 		enum struct VertexType { None, Support, Handle, Boundary };
@@ -29,5 +31,9 @@ namespace algorithm {
 		
 		pmp::VertexProperty<VertexType> typeMarks_;
 		pmp::VertexProperty<int> idx_;
+
+		Eigen::SparseMatrix<double> laplace1_;
+		Eigen::SparseMatrix<double> laplace2_;
+		Eigen::SparseMatrix<double> areaScale_;
 	};
 }

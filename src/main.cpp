@@ -6,7 +6,7 @@ int main()
 {
 	using namespace pmp;
 
-	const std::string meshFile = "../models/apple.off";
+	const std::string meshFile = "../models/elephant.off";
 	VertexSelectionViewer window("hello world! Test", 1366, 768);
 	window.load_mesh(meshFile.c_str());
 	window.run();

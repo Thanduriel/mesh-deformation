@@ -6,7 +6,7 @@ using namespace pmp;
 
 VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int height, bool showgui)
 	: TrackballViewer(title, width, height, showgui), pickPosition_(0, 0, 0), pickVertex_(0), isVertexTranslationActive_(false),
-	brushSize_(20)
+	brushSize_(0.05)
 {
 	clear_draw_modes();
 	add_draw_mode("Smooth Shading");
@@ -119,7 +119,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	{
 		if (deformationSpace_ != nullptr)
 		{
-			deformationSpace_->translate(this->translationNormal_);
+			deformationSpace_->translate(this->translationNormal_ * 0.05);
 			update_mesh();
 		}
 
@@ -275,7 +275,7 @@ void VertexSelectionViewer::process_imgui()
 		ImGui::BulletText("%f X:", pickPosition_[0]);
 		ImGui::BulletText("%f Y:", pickPosition_[1]);
 		ImGui::BulletText("%f Z:", pickPosition_[2]);
-		ImGui::SliderFloat("%f BrushSize:", &brushSize_, 10.0, 100.0);
+		ImGui::SliderFloat("%f BrushSize:", &brushSize_, 0.01, 1.0);
 	}
 }
 

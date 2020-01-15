@@ -12,7 +12,9 @@ public:
 
 	~VertexSelectionViewer();
 
-	virtual void draw(const std::string& draw_mode) override;
+	void do_processing() override;
+
+	void draw(const std::string& draw_mode) override;
 
 	//! load a mesh from file \c filename
 	bool load_mesh(const char* filename);

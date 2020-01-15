@@ -17,8 +17,13 @@ VertexSelectionViewer::~VertexSelectionViewer()
 {
 }
 
+void VertexSelectionViewer::do_processing()
+{
+}
+
 void VertexSelectionViewer::draw(const std::string& draw_mode)
 {
+	update_mesh();
 	mesh_.draw(projection_matrix_, modelview_matrix_, "Smooth Shading");
 }
 
@@ -202,7 +207,8 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 	{
 		vec2 currMousePos = vec2(xpos, ypos);
 		vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
-		if (ypos > 0 && pmp::norm(mouseMotion) > 0)
+		float mouseMotionNorm = pmp::norm(mouseMotion);
+		if (ypos > 0 && mouseMotionNorm > 0)
 		{
 			vec4 t = projection_matrix_ * modelview_matrix_ * vec4(translationNormal_, 1.0f);
 			vec2 tVec2 = vec2(-t[0], -t[1]);
@@ -212,8 +218,7 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 
 			float scalar = pmp::dot(mouseMotion, tVec2);
 			std::cout << scalar << std::endl;
-			deformationSpace_->translate(this->translationNormal_ * scalar * 0.01f);
-			update_mesh();
+			deformationSpace_->translate(this->translationNormal_ * scalar * 0.001f * mouseMotionNorm);
 			last_point_2d_ = ivec2(xpos, ypos);
 		}
 	}
@@ -221,7 +226,6 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 	{
 		TrackballViewer::motion(xpos, ypos);
 	}
-
 }
 
 void VertexSelectionViewer::mouse(int button, int action, int mods)

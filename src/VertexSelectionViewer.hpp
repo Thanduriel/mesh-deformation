@@ -19,6 +19,8 @@ public:
 
 	void motion(double xpos, double ypos) override;
 
+	void mouse(int button, int action, int mods) override;
+
 	void keyboard(int key, int scancode, int action, int mods) override;
 
 	pmp::Vertex pick_vertex(int x, int y);
@@ -34,6 +36,7 @@ private:
  	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;	
 	bool isVertexTranslationActive_;
+	bool isVertexTranslationMouseActive_;
 	pmp::Normal translationNormal_;
 
 	SurfaceColorMesh mesh_;

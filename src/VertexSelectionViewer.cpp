@@ -6,7 +6,7 @@ using namespace pmp;
 
 VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int height, bool showgui)
 	: TrackballViewer(title, width, height, showgui), pickPosition_(0, 0, 0), pickVertex_(0), isVertexTranslationActive_(false),
-	brushSize_(0.05)
+	brushSize_(0.05), isVertexTranslationMouseActive_(false)
 {
 	clear_draw_modes();
 	add_draw_mode("Smooth Shading");
@@ -24,7 +24,6 @@ void VertexSelectionViewer::draw(const std::string& draw_mode)
 
 void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods)
 {
-	isVertexTranslationActive_ = false;
 	if (action != GLFW_PRESS && action != GLFW_REPEAT)
 		return;
 
@@ -117,13 +116,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	}
 	case GLFW_KEY_SPACE:
 	{
-		if (deformationSpace_ != nullptr)
-		{
-			deformationSpace_->translate(this->translationNormal_ * 0.05);
-			update_mesh();
-		}
-
-		isVertexTranslationActive_ = true;
+		isVertexTranslationActive_ = !isVertexTranslationActive_;
 		break;
 	}
 	case GLFW_KEY_T:
@@ -205,21 +198,41 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 
 void VertexSelectionViewer::motion(double xpos, double ypos)
 {
-	if (isVertexTranslationActive_)
+	if (isVertexTranslationMouseActive_)
 	{
-		if (ypos > 0)
+		vec2 currMousePos = vec2(xpos, ypos);
+		vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
+		if (ypos > 0 && pmp::norm(mouseMotion) > 0)
 		{
-			float dy = (last_point_2d_[1] - ypos) * 0.1f;
-			//deformationSpace_->translate(this->translationNormal_ * dy);
- 			update_mesh();
+			vec4 t = projection_matrix_ * modelview_matrix_ * vec4(translationNormal_, 1.0f);
+			vec2 tVec2 = vec2(-t[0], -t[1]);
+
+			tVec2.normalize();
+			mouseMotion.normalize();
+
+			float scalar = pmp::dot(mouseMotion, tVec2);
+			std::cout << scalar << std::endl;
+			deformationSpace_->translate(this->translationNormal_ * scalar * 0.01f);
+			update_mesh();
+			last_point_2d_ = ivec2(xpos, ypos);
 		}
-		last_point_2d_ = ivec2(xpos, ypos);
 	}
 	else
 	{
 		TrackballViewer::motion(xpos, ypos);
 	}
 
+}
+
+void VertexSelectionViewer::mouse(int button, int action, int mods)
+{
+	if (action == GLFW_PRESS && isVertexTranslationActive_)
+		this->isVertexTranslationMouseActive_ = true;
+	else
+	{
+		this->isVertexTranslationMouseActive_ = false;
+		TrackballViewer::mouse(button, action, mods);
+	}
 }
 
 Vertex VertexSelectionViewer::pick_vertex(int x, int y)

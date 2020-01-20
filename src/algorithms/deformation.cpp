@@ -13,8 +13,13 @@ namespace algorithm {
 	Deformation::Deformation(SurfaceMesh& mesh)
 		: mesh_(mesh),
 		typeMarks_(mesh_.add_vertex_property<VertexType>("v:typeMarks", VertexType::None)),
-		idx_(mesh_.add_vertex_property<int>("v:newIdx", -1))
+		idx_(mesh_.add_vertex_property<int>("v:newIdx", -1)),
+		meshIdx_(mesh_.add_vertex_property<int>("v:meshIdx")),
+		smoothness_(1.0),
+		laplaceOrder_(3)
 	{
+		int index = 0;
+		for (Vertex v : mesh_.vertices()) meshIdx_[v] = index++;
 	}
 
 	Deformation::~Deformation()
@@ -26,16 +31,35 @@ namespace algorithm {
 	void Deformation::set_regions(const std::vector<Vertex>& supportVertices, 
 		const std::vector<Vertex>& handleVertices)
 	{
+		for (Vertex v : mesh_.vertices())
+		{
+			idx_[v] = -1;
+			typeMarks_[v] = VertexType::None;
+		}
+
 		supportVertices_ = supportVertices;
 		handleVertices_ = handleVertices;
 
 		int index = 0;
 		for (Vertex v : supportVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Support; }
 		for (Vertex v : handleVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Handle; }
-		compute_boundary_set(2); // k + 1
-		for (Vertex v : boundaryVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Boundary; }
+		compute_boundary_set(3); // actually laplaceOrder_ is sufficient
+		for (Vertex v : boundaryVertices_) { idx_[v] = index++; }
 
 		compute_laplace();
+		compute_higher_order();
+	}
+
+	void Deformation::set_order(int k)
+	{
+		assert(k > 0 && k <= 3);
+		laplaceOrder_ = k;
+
+		if (is_set())
+		{
+			compute_higher_order();
+			update_support_region();
+		}
 	}
 
 	void Deformation::translate(const pmp::Normal& translation)
@@ -47,6 +71,16 @@ namespace algorithm {
 
 	void Deformation::scale(Scalar scale)
 	{
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+
+		// find center point
+		Point p(0.f);
+		for (Vertex v : handleVertices_) p += points[v];
+		p /= handleVertices_.size();
+
+		for (Vertex v : handleVertices_) points[v] = p + (points[v] - p) * scale;
+
+		update_support_region();
 	}
 
 	void Deformation::rotate(const Normal& axis, Scalar angle)
@@ -99,6 +133,7 @@ namespace algorithm {
 	void Deformation::compute_laplace()
 	{
 		assert(supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size());
+
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 		auto areas = mesh_.add_face_property<Scalar>("f:area");
 
@@ -109,12 +144,7 @@ namespace algorithm {
 		auto eweights = mesh_.add_edge_property<Scalar>("e:cotan");
 		for (Edge e : mesh_.edges()) eweights[e] = std::max(0.0, cotan_weight(mesh_, e));
 
-		auto meshIdx = mesh_.add_vertex_property<int>("v:meshIdx");
-		int index = 0;
-		for (Vertex v : mesh_.vertices()) meshIdx[v] = index++;
-
-		const int numFree = supportVertices_.size();
-		const int numFixed = handleVertices_.size() + boundaryVertices_.size();
+		const auto& meshIdx = meshIdx_;
 
 		// construct Laplace operator matrix L and area weights M
 		std::vector<Triplet> tripletsL;
@@ -134,12 +164,28 @@ namespace algorithm {
 		}
 
 		// use row major to allow for quicker extraction of L1 and L2
-		using SparseMatrixR = Eigen::SparseMatrix<double, Eigen::RowMajor>;
-		SparseMatrixR L(mesh_.n_vertices(), mesh_.n_vertices());
-		L.setFromTriplets(tripletsL.begin(), tripletsL.end());
-		SparseMatrix M(mesh_.n_vertices(), mesh_.n_vertices());
-		M.setFromTriplets(tripletsArea.begin(), tripletsArea.end());
-		areaScale_ = std::move(M);
+		laplacian_.resize(mesh_.n_vertices(), mesh_.n_vertices());
+		laplacian_.setFromTriplets(tripletsL.begin(), tripletsL.end());
+		areaScale_.resize(mesh_.n_vertices(), mesh_.n_vertices());
+		areaScale_.setFromTriplets(tripletsArea.begin(), tripletsArea.end());
+
+		mesh_.remove_vertex_property(vweights);
+		mesh_.remove_edge_property(eweights);
+	}
+
+	void Deformation::compute_higher_order()
+	{
+		const int numFree = supportVertices_.size();
+		const int numFixed = handleVertices_.size() + boundaryVertices_.size();
+
+		SparseMatrixR lOperator;
+		if (laplaceOrder_ == 1)
+			lOperator = laplacian_;
+		if (laplaceOrder_ == 2)
+			lOperator = laplacian_ * laplacian_;
+		else if (laplaceOrder_ == 3)
+			lOperator = laplacian_ * laplacian_ * laplacian_;
+
 		// need other solver if this is used!!!
 //		L = M * L;
 
@@ -150,7 +196,7 @@ namespace algorithm {
 		{
 			int freeCount = 0;
 			int fixedCount = 0;
-			for (SparseMatrixR::InnerIterator it(L, meshIdx[supportVertices_[i]]); it; ++it)
+			for (SparseMatrixR::InnerIterator it(lOperator, meshIdx_[supportVertices_[i]]); it; ++it)
 			{
 				const Vertex v(it.col());
 				const int id = idx_[v];
@@ -158,19 +204,15 @@ namespace algorithm {
 				{
 					tripletsL1.emplace_back(i, id, it.value());
 				}
-				else if(typeMarks_[v] != VertexType::None)
+				else if (typeMarks_[v] != VertexType::None)
 					tripletsL2.emplace_back(i, id - numFree, it.value());
 			}
 		}
 
-		SparseMatrix L1(numFree, numFree);
-		L1.setFromTriplets(tripletsL1.begin(), tripletsL1.end());
-		laplace1_ = std::move(L1);
-		SparseMatrix L2(numFree, numFixed);
-		L2.setFromTriplets(tripletsL2.begin(), tripletsL2.end());
-		laplace2_ = std::move(L2);
-
-		mesh_.remove_vertex_property(meshIdx);
+		laplace1_.resize(numFree, numFree);
+		laplace1_.setFromTriplets(tripletsL1.begin(), tripletsL1.end());
+		laplace2_.resize(numFree, numFixed);
+		laplace2_.setFromTriplets(tripletsL2.begin(), tripletsL2.end());
 	}
 
 	void Deformation::compute_boundary_set(int ringSize)
@@ -200,5 +242,10 @@ namespace algorithm {
 				markNeigbhours(boundaryVertices_[i]);
 			begin = end;
 		}
+	}
+
+	bool Deformation::is_set() const
+	{
+		return supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size();
 	}
 }

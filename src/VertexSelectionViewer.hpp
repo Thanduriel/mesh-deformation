@@ -35,6 +35,7 @@ public:
 
 private:
 	float brushSize_;
+	int operatorOrder_ = 1;
  	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;	
 	bool isVertexTranslationActive_;

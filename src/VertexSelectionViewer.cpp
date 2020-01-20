@@ -128,6 +128,14 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		deformationSpace_->set_regions(supportVertices, handleVertices);
 		break;
 	}
+	case GLFW_KEY_S:
+	{
+		if (deformationSpace_ != nullptr)
+		{
+			deformationSpace_->scale(2.f);
+			update_mesh();
+		}
+	}
 	case GLFW_KEY_SPACE:
 	{
 		isVertexTranslationActive_ = !isVertexTranslationActive_;
@@ -303,6 +311,8 @@ void VertexSelectionViewer::process_imgui()
 		ImGui::BulletText("%f Z:", pickPosition_[2]);
 		const BoundingBox bb = mesh_.bounds();
 		ImGui::SliderFloat("%f BrushSize:", &brushSize_, 0.01, bb.size());
+		if (ImGui::SliderInt("Order", &operatorOrder_, 1, 3) && deformationSpace_)
+			deformationSpace_->set_order(operatorOrder_);
 	}
 }
 

@@ -40,8 +40,10 @@ private:
 	bool isVertexTranslationActive_;
 	bool isVertexTranslationMouseActive_;
 	pmp::Normal translationNormal_;
+	pmp::Point translationPoint_;
 
 	SurfaceColorMesh mesh_;
+	SurfaceColorMesh meshHandle_;
 	pmp::vec3 pickPosition_;
 	pmp::Vertex pickVertex_;
 

@@ -23,7 +23,12 @@ void VertexSelectionViewer::do_processing()
 
 void VertexSelectionViewer::draw(const std::string& draw_mode)
 {
-	update_mesh();
+	if (isVertexTranslationActive_)
+	{
+		update_mesh();
+		meshHandle_.draw(projection_matrix_, modelview_matrix_, "Smooth Shading");
+	}
+
 	mesh_.draw(projection_matrix_, modelview_matrix_, "Smooth Shading");
 }
 
@@ -93,11 +98,13 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	case GLFW_KEY_I:
 	{
 		deformationSpace_ = std::make_unique<algorithm::Deformation>(mesh_);
+		auto points = mesh_.get_vertex_property<Point>("v:point");
 		auto colors = mesh_.get_vertex_property<Color>("v:col");
 		std::vector<Vertex> supportVertices;
 		std::vector<Vertex> handleVertices;
 		pmp::Normal normal(0, 0, 0);
-		int normalIndex = 0;
+		pmp::Point handlePoint(0, 0, 0);
+		int pointIndex = 0;
 
 		for (Vertex v : mesh_.vertices())
 		{
@@ -105,7 +112,8 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			{
 				handleVertices.push_back(v);
 				normal += SurfaceNormals::compute_vertex_normal(mesh_, v);
-				normalIndex++;
+				handlePoint += points[v];
+				pointIndex++;
 			}
 			else if (colors[v] == Color(0, 0, 1))
 			{
@@ -113,6 +121,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			}
 		}
 
+		translationPoint_ = handlePoint / pointIndex;
 		normal.normalize();
 		translationNormal_ = normal;
 
@@ -217,8 +226,8 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 			mouseMotion.normalize();
 
 			float scalar = pmp::dot(mouseMotion, tVec2);
-			std::cout << scalar << std::endl;
 			deformationSpace_->translate(this->translationNormal_ * scalar * 0.001f * mouseMotionNorm);
+			translationPoint_ += translationNormal_ * scalar * 0.001f * mouseMotionNorm;
 			last_point_2d_ = ivec2(xpos, ypos);
 		}
 	}
@@ -304,6 +313,49 @@ void VertexSelectionViewer::update_mesh()
 	center_ = (vec3)bb.center();
 	radius_ = 0.5f * bb.size();
 
+	if (isVertexTranslationActive_)
+	{
+		meshHandle_.clear();
+
+		Vertex v0, v1, v2, v3, v4, v5;
+		float size = 0.01f;
+		v0 = meshHandle_.add_vertex(translationPoint_);
+
+		vec3 vec = vec3(-translationNormal_[1], translationNormal_[0], 0);
+		vec.normalize();
+		v1 = meshHandle_.add_vertex(translationPoint_ + vec * size);
+
+		vec = vec3(translationNormal_[1], -translationNormal_[0], 0);
+		vec.normalize();
+		v2 = meshHandle_.add_vertex(translationPoint_ + vec * size);
+
+		vec3 cross = vec;
+
+		vec = pmp::cross(translationNormal_, vec) * size;
+		vec.normalize();
+		v3 = meshHandle_.add_vertex(translationPoint_ + vec * size);
+
+		vec = vec3(-vec[0], -vec[1], -vec[2]);
+		vec.normalize();
+		v4 = meshHandle_.add_vertex(translationPoint_ + vec * size);
+
+		v5 = meshHandle_.add_vertex(translationPoint_ + translationNormal_ * 0.2f);
+
+		//meshHandle_.add_triangle(v0, v1, v3);
+		//meshHandle_.add_triangle(v0, v3, v2);
+		//meshHandle_.add_triangle(v0, v2, v4);
+		//meshHandle_.add_triangle(v0, v4, v1);
+		meshHandle_.add_triangle(v1, v3, v5);
+		meshHandle_.add_triangle(v3, v2, v5);
+		meshHandle_.add_triangle(v2, v4, v5);
+		meshHandle_.add_triangle(v4, v1, v5);
+
+		auto vProp = meshHandle_.add_vertex_property<Color>("v:col");
+		for (auto v : meshHandle_.vertices())
+			vProp[v] = Color(0.3f, 0.3f, 1);
+	}
+
 	// re-compute face and vertex normals
 	mesh_.update_opengl_buffers();
+	meshHandle_.update_opengl_buffers();
 }

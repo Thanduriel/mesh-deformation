@@ -15,6 +15,7 @@ namespace algorithm {
 			const std::vector<pmp::Vertex>& handleVertices);
 		void set_smoothness(pmp::Scalar smoothness) { smoothness_ = smoothness; }
 		void set_order(int k);
+		int get_order() const { return laplaceOrder_; }
 
 		// operator is ready for modifications to the vertices
 		bool is_set() const;

@@ -23,12 +23,15 @@ void VertexSelectionViewer::do_processing()
 
 void VertexSelectionViewer::draw(const std::string& draw_mode)
 {
-	if (isVertexTranslationActive_)
+	if (meshIsDirty_)
 	{
 		update_mesh();
+		meshIsDirty_ = false;
+	}
+	if (isVertexTranslationActive_)
+	{
 		meshHandle_.draw(projection_matrix_, modelview_matrix_, "Smooth Shading");
 	}
-
 	mesh_.draw(projection_matrix_, modelview_matrix_, "Smooth Shading");
 }
 
@@ -58,7 +61,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			auto vProp = mesh_.get_vertex_property<Color>("v:col");
 			for (auto v : vVector)
 				vProp[v] = Color(0, 0, 1);
-			update_mesh();
+			meshIsDirty_ = true;
 		}
 		break;
 	}
@@ -75,7 +78,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			auto vProp = mesh_.get_vertex_property<Color>("v:col");
 			for (auto v : vVector)
 				vProp[v] = Color(0, 1, 0);
-			update_mesh();
+			meshIsDirty_ = true;
 		}
 		break;
 	}
@@ -91,7 +94,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		{
 			auto vProp = mesh_.get_vertex_property<Color>("v:col");
 			vProp[v] = Color(1, 0, 0);
-			update_mesh();
+			meshIsDirty_ = true;
 		}
 		break;
 	}
@@ -133,44 +136,13 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		if (deformationSpace_ != nullptr)
 		{
 			deformationSpace_->scale(2.f);
-			update_mesh();
+			meshIsDirty_ = true;
 		}
 	}
 	case GLFW_KEY_SPACE:
 	{
 		isVertexTranslationActive_ = !isVertexTranslationActive_;
 		break;
-	}
-	case GLFW_KEY_T:
-	{
-		static algorithm::Deformation deformation(mesh_);
-		static bool init = true;
-
-		if (init)
-		{
-			init = false;
-			auto points = mesh_.get_vertex_property<Point>("v:point");
-			auto colors = mesh_.get_vertex_property<Color>("v:col");
-			std::vector<Vertex> supportVertices;
-			std::vector<Vertex> handleVertices;
-			for (Vertex v : mesh_.vertices())
-			{
-				if (points[v][2] > 80.0)
-				{
-					colors[v] = Color(0.0, 1.0, 0.0);
-					handleVertices.push_back(v);
-				}
-				else if (points[v][2] > 0.0)
-				{
-					colors[v] = Color(0.0, 0.0, 1.0);
-					supportVertices.push_back(v);
-				}
-			}
-			deformation.set_regions(supportVertices, handleVertices);
-		}
-		else deformation.translate(Normal(0.0, 0.0, 1.0));
-
-		update_mesh();
 	}
 	default:
 	{
@@ -237,6 +209,8 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 			deformationSpace_->translate(this->translationNormal_ * scalar * 0.001f * mouseMotionNorm);
 			translationPoint_ += translationNormal_ * scalar * 0.001f * mouseMotionNorm;
 			last_point_2d_ = ivec2(xpos, ypos);
+
+			meshIsDirty_ = true;
 		}
 	}
 	else
@@ -312,7 +286,10 @@ void VertexSelectionViewer::process_imgui()
 		const BoundingBox bb = mesh_.bounds();
 		ImGui::SliderFloat("%f BrushSize:", &brushSize_, 0.01, bb.size());
 		if (ImGui::SliderInt("Order", &operatorOrder_, 1, 3) && deformationSpace_)
+		{
 			deformationSpace_->set_order(operatorOrder_);
+			meshIsDirty_ = true;
+		}
 	}
 }
 

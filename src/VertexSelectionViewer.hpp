@@ -35,7 +35,7 @@ public:
 
 private:
 	float brushSize_;
-	int operatorOrder_ = 1;
+	int operatorOrder_ = 3;
  	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;	
 	bool isVertexTranslationActive_;
@@ -47,6 +47,7 @@ private:
 	SurfaceColorMesh meshHandle_;
 	pmp::vec3 pickPosition_;
 	pmp::Vertex pickVertex_;
+	bool meshIsDirty_ = true;
 
 
 };

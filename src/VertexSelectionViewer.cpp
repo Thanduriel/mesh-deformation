@@ -5,8 +5,12 @@
 using namespace pmp;
 
 VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int height, bool showgui)
-	: TrackballViewer(title, width, height, showgui), pickPosition_(0, 0, 0), pickVertex_(0), isVertexTranslationActive_(false),
-	brushSize_(0.05), isVertexTranslationMouseActive_(false)
+	: TrackballViewer(title, width, height, showgui), 
+	brushSize_(0.05),
+	isVertexTranslationActive_(false),
+	isVertexTranslationMouseActive_(false),
+	pickPosition_(0, 0, 0), 
+	pickVertex_(0)
 {
 	clear_draw_modes();
 	add_draw_mode("Smooth Shading");
@@ -316,7 +320,7 @@ void VertexSelectionViewer::update_mesh()
 		vec.normalize();
 		v2 = meshHandle_.add_vertex(translationPoint_ + vec * size);
 
-		vec3 cross = vec;
+	//	vec3 cross = vec;
 
 		vec = pmp::cross(translationNormal_, vec) * size;
 		vec.normalize();

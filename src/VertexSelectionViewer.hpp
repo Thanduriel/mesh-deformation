@@ -1,6 +1,7 @@
 #include "pmp/visualization/MeshViewer.h"
 #include "imgui.h"
 #include <SurfaceColorMesh.hpp>
+#include <memory>
 
 namespace algorithm {
 	class Deformation;

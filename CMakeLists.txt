@@ -52,7 +52,9 @@ endmacro()
 GroupSources("src")
 
 add_executable(modeller ${SOURCE_FILES})
-target_link_libraries( modeller pmp_vis)
-#target_link_libraries(modeller ${OPENGL_gl_LIBRARY})
-#target_link_libraries (modeller glew_s) # use static version
-#target_link_libraries (modeller glfw)
+target_link_libraries( modeller pmp_vis )
+
+if(NOT MSVC)
+	target_compile_options(modeller PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")
+	target_compile_options(modeller PRIVATE "$<$<CONFIG:RELEASE>:-Wall;-O3;-march=native>")
+endif()

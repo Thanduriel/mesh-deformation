@@ -9,6 +9,7 @@
 #pragma once
 //=============================================================================
 
+#define GLEW_STATIC
 #include <pmp/visualization/GL.h>
 #include <pmp/visualization/Shader.h>
 #include <pmp/MatVec.h>

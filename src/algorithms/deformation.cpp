@@ -134,8 +134,7 @@ namespace algorithm {
 	{
 		assert(supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size());
 
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-		auto areas = mesh_.add_face_property<Scalar>("f:area");
+	//	auto areas = mesh_.add_face_property<Scalar>("f:area");
 
 		// compute weights
 		auto vweights = mesh_.add_vertex_property<Scalar>("v:area");
@@ -175,8 +174,8 @@ namespace algorithm {
 
 	void Deformation::compute_higher_order()
 	{
-		const int numFree = supportVertices_.size();
-		const int numFixed = handleVertices_.size() + boundaryVertices_.size();
+		const std::size_t numFree = supportVertices_.size();
+		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
 		SparseMatrixR lOperator;
 		if (laplaceOrder_ == 1)
@@ -194,8 +193,6 @@ namespace algorithm {
 		std::vector<Triplet> tripletsL2;
 		for (std::size_t i = 0; i < numFree; ++i)
 		{
-			int freeCount = 0;
-			int fixedCount = 0;
 			for (SparseMatrixR::InnerIterator it(lOperator, meshIdx_[supportVertices_[i]]); it; ++it)
 			{
 				const Vertex v(it.col());

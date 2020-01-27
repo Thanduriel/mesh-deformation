@@ -13,9 +13,11 @@ namespace algorithm {
 
 		void set_regions(const std::vector<pmp::Vertex>& supportVertices, 
 			const std::vector<pmp::Vertex>& handleVertices);
-		void set_smoothness(pmp::Scalar smoothness) { smoothness_ = smoothness; }
 		void set_order(int k);
 		int get_order() const { return laplaceOrder_; }
+		void set_area_scaling(bool active);
+		bool get_area_scaling() const { return useAreaScaling_; }
+		void set_smoothness_handle(pmp::Scalar smoothness);
 
 		// operator is ready for modifications to the vertices
 		bool is_set() const;
@@ -39,14 +41,16 @@ namespace algorithm {
 		pmp::VertexProperty<VertexType> typeMarks_;
 		pmp::VertexProperty<int> idx_;		//< indicies for support region
 		pmp::VertexProperty<int> meshIdx_;	//< indicies for all vertices
+		pmp::VertexProperty<pmp::Scalar> smoothness_;
 
 		using SparseMatrix = Eigen::SparseMatrix<double>;
 		using SparseMatrixR = Eigen::SparseMatrix<double, Eigen::RowMajor>;
 		SparseMatrixR laplacian_;
 		SparseMatrix laplace1_; // support region
 		SparseMatrix laplace2_; // boundary region 
-		SparseMatrix areaScale_;
-		pmp::Scalar smoothness_;
+		Eigen::DiagonalMatrix<double, Eigen::Dynamic> areaScale_;
+		Eigen::DiagonalMatrix<double, Eigen::Dynamic> smoothnessScale_;
 		int laplaceOrder_;
+		bool useAreaScaling_ = false;
 	};
 }

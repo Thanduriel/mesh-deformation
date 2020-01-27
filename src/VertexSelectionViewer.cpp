@@ -14,6 +14,7 @@ VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int h
 {
 	clear_draw_modes();
 	add_draw_mode("Smooth Shading");
+	add_draw_mode("Wireframe");
 	set_draw_mode("Smooth Shading");
 }
 
@@ -36,7 +37,7 @@ void VertexSelectionViewer::draw(const std::string& draw_mode)
 	{
 		meshHandle_.draw(projection_matrix_, modelview_matrix_, "Smooth Shading");
 	}
-	mesh_.draw(projection_matrix_, modelview_matrix_, "Smooth Shading");
+	mesh_.draw(projection_matrix_, modelview_matrix_, draw_mode);
 }
 
 void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods)
@@ -148,6 +149,16 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		isVertexTranslationActive_ = !isVertexTranslationActive_;
 		break;
 	}
+	case GLFW_KEY_1:
+		set_draw_mode("Smooth Shading");
+		break;
+	case GLFW_KEY_2:
+		set_draw_mode("Wireframe");
+		break;
+	case GLFW_KEY_3:
+		deformationSpace_->set_area_scaling(!deformationSpace_->get_area_scaling());
+		meshIsDirty_ = true;
+		break;
 	default:
 	{
 		TrackballViewer::keyboard(key, scancode, action, mods);
@@ -281,17 +292,30 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 
 void VertexSelectionViewer::process_imgui()
 {
-	if (ImGui::CollapsingHeader("MousePosition", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		// output mesh statistics
-		ImGui::BulletText("%f X:", pickPosition_[0]);
-		ImGui::BulletText("%f Y:", pickPosition_[1]);
-		ImGui::BulletText("%f Z:", pickPosition_[2]);
+	//	ImGui::BulletText("%f X:", pickPosition_[0]);
+	//	ImGui::BulletText("%f Y:", pickPosition_[1]);
+	//	ImGui::BulletText("%f Z:", pickPosition_[2]);
 		const BoundingBox bb = mesh_.bounds();
-		ImGui::SliderFloat("%f BrushSize:", &brushSize_, 0.01, bb.size());
-		if (ImGui::SliderInt("Order", &operatorOrder_, 1, 3) && deformationSpace_)
+		ImGui::SliderFloat("BrushSize", &brushSize_, 0.01, bb.size());
+	}
+	if (deformationSpace_ && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		if (ImGui::SliderInt("Order", &operatorOrder_, 1, 3))
 		{
 			deformationSpace_->set_order(operatorOrder_);
+			meshIsDirty_ = true;
+		}
+		if (ImGui::SliderFloat("smoothness", &smoothness_, 0.f, 2.f))
+		{
+			deformationSpace_->set_smoothness_handle(smoothness_);
+			meshIsDirty_ = true;
+		}
+		if (ImGui::Checkbox("area scaling", &useAreaScaling_))
+		{
+			deformationSpace_->set_area_scaling(useAreaScaling_);
 			meshIsDirty_ = true;
 		}
 	}

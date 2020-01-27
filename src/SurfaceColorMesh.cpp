@@ -101,6 +101,15 @@ void SurfaceColorMesh::draw(const mat4& projection_matrix, const mat4& modelview
 	}
 	else if (draw_mode == "Smooth Shading")
 	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		if (n_faces())
+		{
+			glDrawArrays(GL_TRIANGLES, 0, n_vertices_);
+		}
+	}
+	else if (draw_mode == "Wireframe")
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		if (n_faces())
 		{
 			glDrawArrays(GL_TRIANGLES, 0, n_vertices_);

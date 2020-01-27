@@ -1,6 +1,7 @@
 #include "deformation.hpp"
 #include <pmp/algorithms/DifferentialGeometry.h>
 #include <Eigen/Sparse>
+#include<Eigen/SparseQR>
 
 namespace algorithm {
 
@@ -15,7 +16,10 @@ namespace algorithm {
 		typeMarks_(mesh_.add_vertex_property<VertexType>("v:typeMarks", VertexType::None)),
 		idx_(mesh_.add_vertex_property<int>("v:newIdx", -1)),
 		meshIdx_(mesh_.add_vertex_property<int>("v:meshIdx")),
-		smoothness_(1.0),
+		smoothness_(mesh_.add_vertex_property<pmp::Scalar>("v:smoothness", 2.0)),
+		laplacian_(mesh.n_vertices(), mesh.n_vertices()),
+		areaScale_(mesh.n_vertices()),
+		smoothnessScale_(mesh.n_vertices()),
 		laplaceOrder_(3)
 	{
 		int index = 0;
@@ -26,6 +30,7 @@ namespace algorithm {
 	{
 		mesh_.remove_vertex_property(typeMarks_);
 		mesh_.remove_vertex_property(idx_);
+		mesh_.remove_vertex_property(smoothness_);
 	}
 
 	void Deformation::set_regions(const std::vector<Vertex>& supportVertices, 
@@ -46,6 +51,8 @@ namespace algorithm {
 		compute_boundary_set(3); // actually laplaceOrder_ is sufficient
 		for (Vertex v : boundaryVertices_) { idx_[v] = index++; }
 
+		smoothnessScale_.setIdentity();
+
 		compute_laplace();
 		compute_higher_order();
 	}
@@ -60,6 +67,26 @@ namespace algorithm {
 			compute_higher_order();
 			update_support_region();
 		}
+	}
+
+	void Deformation::set_area_scaling(bool active)
+	{
+		useAreaScaling_ = active;
+
+		if (is_set())
+		{
+			compute_higher_order();
+			update_support_region();
+		}
+	}
+
+	void Deformation::set_smoothness_handle(pmp::Scalar smoothness)
+	{
+		assert(is_set());
+
+		for (Vertex v : handleVertices_) smoothness_[v] = smoothness;
+		compute_higher_order();
+		update_support_region();
 	}
 
 	void Deformation::translate(const pmp::Normal& translation)
@@ -114,19 +141,25 @@ namespace algorithm {
 		}
 
 		const DenseMatrix B = /*areaScale_ **/ -laplace2_ * x2;
-		Eigen::SimplicialLDLT<SparseMatrix> solver(laplace1_);
-		const DenseMatrix X = solver.solve(B);
-		if (solver.info() != Eigen::Success)
-			std::cerr << "Deformation: Could not solve linear system\n";
-		else 
+		auto solve = [&B](const auto& solver)
 		{
-			// apply result
-			for (size_t i = 0; i < numFree; ++i)
+			DenseMatrix res = solver.solve(B);
+			if (solver.info() != Eigen::Success)
 			{
-				points[supportVertices_[i]][0] = X(i, 0);
-				points[supportVertices_[i]][1] = X(i, 1);
-				points[supportVertices_[i]][2] = X(i, 2);
+				std::cerr << "Deformation: Could not solve linear system\n";
+				throw 42;
 			}
+			return res;
+		};
+		
+		const DenseMatrix X = true ? solve(Eigen::SparseLU<SparseMatrix>(laplace1_))
+			: solve(Eigen::SimplicialLDLT<SparseMatrix>(laplace1_));
+		// apply result
+		for (size_t i = 0; i < numFree; ++i)
+		{
+			points[supportVertices_[i]][0] = X(i, 0);
+			points[supportVertices_[i]][1] = X(i, 1);
+			points[supportVertices_[i]][2] = X(i, 2);
 		}
 	}
 
@@ -134,11 +167,16 @@ namespace algorithm {
 	{
 		assert(supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size());
 
-	//	auto areas = mesh_.add_face_property<Scalar>("f:area");
+		auto areas = mesh_.add_face_property<Scalar>("f:area");
+		for (Face f : mesh_.faces()) areas[f] = triangle_area(mesh_, f);
 
 		// compute weights
 		auto vweights = mesh_.add_vertex_property<Scalar>("v:area");
-		for (Vertex v : mesh_.vertices()) vweights[v] = 0.5 / voronoi_area(mesh_, v);
+		for (Vertex v : mesh_.vertices())
+		{
+			vweights[v] = 0.5 * voronoi_area_barycentric(mesh_, v);
+			areaScale_.diagonal()[meshIdx_[v]] = vweights[v];
+		}
 
 		auto eweights = mesh_.add_edge_property<Scalar>("e:cotan");
 		for (Edge e : mesh_.edges()) eweights[e] = std::max(0.0, cotan_weight(mesh_, e));
@@ -163,10 +201,7 @@ namespace algorithm {
 		}
 
 		// use row major to allow for quicker extraction of L1 and L2
-		laplacian_.resize(mesh_.n_vertices(), mesh_.n_vertices());
 		laplacian_.setFromTriplets(tripletsL.begin(), tripletsL.end());
-		areaScale_.resize(mesh_.n_vertices(), mesh_.n_vertices());
-		areaScale_.setFromTriplets(tripletsArea.begin(), tripletsArea.end());
 
 		mesh_.remove_vertex_property(vweights);
 		mesh_.remove_edge_property(eweights);
@@ -177,16 +212,24 @@ namespace algorithm {
 		const std::size_t numFree = supportVertices_.size();
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
-		SparseMatrixR lOperator;
-		if (laplaceOrder_ == 1)
-			lOperator = laplacian_;
+		const SparseMatrixR L = useAreaScaling_ ? areaScale_ * laplacian_ : laplacian_;
+		SparseMatrixR lOperator(L.rows(), L.cols());
+		lOperator.setIdentity();
+		for (int i = 0; i < laplaceOrder_; ++i)
+		{
+			auto& diagonal = smoothnessScale_.diagonal();
+			for (Vertex v : handleVertices_)
+				diagonal[meshIdx_[v]] = std::clamp(smoothness_[v] - i, Scalar(0.0), Scalar(1.0));
+			for (Vertex v : boundaryVertices_)
+				diagonal[meshIdx_[v]] = std::clamp(smoothness_[v] - i, Scalar(0.0), Scalar(1.0));
+			lOperator = smoothnessScale_ * L * lOperator;
+		}
+	/*	if (laplaceOrder_ == 1)
+			lOperator = L;
 		if (laplaceOrder_ == 2)
-			lOperator = laplacian_ * laplacian_;
+			lOperator = L * L;
 		else if (laplaceOrder_ == 3)
-			lOperator = laplacian_ * laplacian_ * laplacian_;
-
-		// need other solver if this is used!!!
-//		L = M * L;
+			lOperator = L * L * L;*/
 
 		// extract submatrix of marked regions and reorder acording to idx_
 		std::vector<Triplet> tripletsL1;

@@ -37,6 +37,8 @@ public:
 private:
 	float brushSize_;
 	int operatorOrder_ = 3;
+	float smoothness_ = 2.f;
+	bool useAreaScaling_ = false;
  	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;	
 	bool isVertexTranslationActive_;

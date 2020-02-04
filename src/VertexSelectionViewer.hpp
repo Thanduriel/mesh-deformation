@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include <SurfaceColorMesh.hpp>
 #include <memory>
+#include <HandleMesh.hpp>
 
 namespace algorithm {
 	class Deformation;
@@ -47,7 +48,7 @@ private:
 	pmp::Point translationPoint_;
 
 	SurfaceColorMesh mesh_;
-	SurfaceColorMesh meshHandle_;
+	HandleMesh meshHandle_;
 	pmp::vec3 pickPosition_;
 	pmp::Vertex pickVertex_;
 	bool meshIsDirty_ = true;

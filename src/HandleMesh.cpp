@@ -75,7 +75,7 @@ mat4 HandleMesh::GetTranslationMatrix()
 void HandleMesh::InitLocalCoordinateSystem(mat4 modelview, vec3 normal)
 {
 	local_z_ = normal;
-	vec4 right = modelview * vec4(1, 0, 0, 0);
+	vec4 right = vec4(1, 0, 0, 0);
 	local_x_ = cross(vec3(right[0], right[1], right[2]), local_z_);
 	local_y_ = cross(local_z_, local_x_);
 

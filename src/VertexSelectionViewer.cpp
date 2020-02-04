@@ -87,7 +87,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		}
 		break;
 	}
-	case GLFW_KEY_R:
+	case GLFW_KEY_E:
 	{
 		TrackballViewer::pick(pickPosition_);
 		double x = 0;
@@ -99,6 +99,15 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		{
 			auto vProp = mesh_.get_vertex_property<Color>("v:col");
 			vProp[v] = Color(1, 0, 0);
+			meshIsDirty_ = true;
+		}
+		break;
+	}
+	case GLFW_KEY_R:
+	{
+		if (deformationSpace_ != nullptr)
+		{
+			deformationSpace_->rotate(translationNormal_, 5);
 			meshIsDirty_ = true;
 		}
 		break;

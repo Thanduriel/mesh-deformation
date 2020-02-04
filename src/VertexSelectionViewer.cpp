@@ -144,10 +144,26 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			meshIsDirty_ = true;
 		}
 	}
+	case GLFW_KEY_X:
+	{
+		meshHandle_.SetLocalMoveAxis(0);
+		break;
+	}
+	case GLFW_KEY_Y:
+	{
+		meshHandle_.SetLocalMoveAxis(1);
+		break;
+	}
+	case GLFW_KEY_Z:
+	{
+		meshHandle_.SetLocalMoveAxis(2);
+		break;
+	}
 	case GLFW_KEY_SPACE:
 	{
 		isVertexTranslationActive_ = !isVertexTranslationActive_;
 		meshHandle_ = HandleMesh::CreateSimpleMesh(translationNormal_, translationPoint_);
+		meshHandle_.InitLocalCoordinateSystem(modelview_matrix_, translationNormal_);
 		break;
 	}
 	case GLFW_KEY_1:
@@ -215,12 +231,7 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 		float mouseMotionNorm = pmp::norm(mouseMotion);
 		if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0)
 		{
-			vec4 t = projection_matrix_ * modelview_matrix_ * vec4(translationNormal_, 1.0f);
-			vec2 tVec2 = vec2(t[0], -t[1]);
-			tVec2.normalize();
-
-			float scalar = pmp::dot(mouseMotion, tVec2);
-			vec3 movement = translationNormal_ * scalar * 0.001f;
+			vec3 movement = meshHandle_.CalcMoveVector(projection_matrix_ * modelview_matrix_, mouseMotion);
 			deformationSpace_->translate(movement);
 			translationPoint_ += movement;
 			last_point_2d_ = ivec2(xpos, ypos);

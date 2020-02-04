@@ -35,7 +35,7 @@ void VertexSelectionViewer::draw(const std::string& draw_mode)
 	}
 	if (isVertexTranslationActive_)
 	{
-		meshHandle_.draw(projection_matrix_, modelview_matrix_ * meshHandle_.GetTranslationMatrix(), "Smooth Shading");
+		meshHandle_.draw(projection_matrix_, modelview_matrix_ * meshHandle_.GetModelMatrix(), "Smooth Shading");
 	}
 	mesh_.draw(projection_matrix_, modelview_matrix_, draw_mode);
 }
@@ -202,10 +202,6 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		BoundingBox bb = mesh_.bounds();
 		set_scene((vec3)bb.center(), 0.5 * bb.size());
 
-		auto vProp = mesh_.add_vertex_property<Color>("v:col");
-		for (auto v : mesh_.vertices())
-			vProp[v] = Color(1, 0, 0);
-
 		// compute face & vertex normals, update face indices
 		update_mesh();
 
@@ -351,6 +347,7 @@ void VertexSelectionViewer::update_mesh()
 	if (isVertexTranslationActive_)
 	{
 		meshHandle_.SetOrigin(translationPoint_);
+		meshHandle_.SetOrientation(translationNormal_, vec3(0.f,0.f,1.f));
 	}
 
 	// re-compute face and vertex normals

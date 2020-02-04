@@ -142,7 +142,7 @@ void SurfaceColorMesh::update_opengl_buffers()
 	auto vpos = get_vertex_property<Point>("v:point");
 	auto vtex = get_vertex_property<TexCoord>("v:tex");
 	auto htex = get_halfedge_property<TexCoord>("h:tex");
-	auto vcol = get_vertex_property<Color>("v:col");
+	auto vcol = vertex_property<Color>("v:col", Color(1, 0, 0));
 
 	// index array for remapping vertex indices during duplication
 	auto vertex_indices = add_vertex_property<size_t>("v:index");

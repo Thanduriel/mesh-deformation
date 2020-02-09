@@ -1,8 +1,8 @@
 #include "pmp/visualization/MeshViewer.h"
 #include "imgui.h"
 #include <SurfaceColorMesh.hpp>
+#include "ModifierHandle.hpp"
 #include <memory>
-#include <HandleMesh.hpp>
 
 namespace algorithm {
 	class Deformation;
@@ -48,7 +48,7 @@ private:
 	pmp::Point translationPoint_;
 
 	SurfaceColorMesh mesh_;
-	HandleMesh meshHandle_;
+	ModifierHandle meshHandle_;
 	pmp::vec3 pickPosition_;
 	pmp::Vertex pickVertex_;
 	bool meshIsDirty_ = true;

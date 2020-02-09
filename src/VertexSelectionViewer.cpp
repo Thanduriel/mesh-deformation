@@ -35,7 +35,7 @@ void VertexSelectionViewer::draw(const std::string& draw_mode)
 	}
 	if (isVertexTranslationActive_)
 	{
-		meshHandle_.draw(projection_matrix_, modelview_matrix_ * meshHandle_.GetModelMatrix(), "Smooth Shading");
+		meshHandle_.draw(projection_matrix_, modelview_matrix_);
 	}
 	mesh_.draw(projection_matrix_, modelview_matrix_, draw_mode);
 }
@@ -155,24 +155,25 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	}
 	case GLFW_KEY_X:
 	{
-		meshHandle_.SetLocalMoveAxis(0);
+		meshHandle_.set_local_axis(0);
 		break;
 	}
 	case GLFW_KEY_Y:
 	{
-		meshHandle_.SetLocalMoveAxis(1);
+		meshHandle_.set_local_axis(1);
 		break;
 	}
 	case GLFW_KEY_Z:
 	{
-		meshHandle_.SetLocalMoveAxis(2);
+		meshHandle_.set_local_axis(2);
 		break;
 	}
 	case GLFW_KEY_SPACE:
 	{
 		isVertexTranslationActive_ = !isVertexTranslationActive_;
-		meshHandle_ = HandleMesh::CreateSimpleMesh(translationNormal_, translationPoint_);
-		meshHandle_.InitLocalCoordinateSystem(modelview_matrix_, translationNormal_);
+		meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
+		// quick fix to force recompute
+		meshIsDirty_ = true;
 		break;
 	}
 	case GLFW_KEY_1:
@@ -201,6 +202,7 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		// update scene center and bounds
 		BoundingBox bb = mesh_.bounds();
 		set_scene((vec3)bb.center(), 0.5 * bb.size());
+		meshHandle_.set_scale(vec3(bb.size()*0.1f));
 
 		// compute face & vertex normals, update face indices
 		update_mesh();
@@ -236,7 +238,7 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 		float mouseMotionNorm = pmp::norm(mouseMotion);
 		if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0)
 		{
-			vec3 movement = meshHandle_.CalcMoveVector(projection_matrix_ * modelview_matrix_, mouseMotion);
+			vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, mouseMotion);
 			deformationSpace_->translate(movement);
 			translationPoint_ += movement;
 			last_point_2d_ = ivec2(xpos, ypos);
@@ -346,11 +348,10 @@ void VertexSelectionViewer::update_mesh()
 
 	if (isVertexTranslationActive_)
 	{
-		meshHandle_.SetOrigin(translationPoint_);
-		meshHandle_.SetOrientation(translationNormal_, vec3(0.f,0.f,1.f));
+		meshHandle_.set_origin(translationPoint_);
+		meshHandle_.set_orientation(translationNormal_, vec3(0.f,0.f,1.f));
 	}
 
 	// re-compute face and vertex normals
 	mesh_.update_opengl_buffers();
-	meshHandle_.update_opengl_buffers();
 }

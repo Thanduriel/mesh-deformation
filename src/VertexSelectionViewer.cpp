@@ -414,3 +414,32 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 void VertexSelectionViewer::scaleHandle(float xpos, float ypos)
 {
 }
+
+Ray VertexSelectionViewer::get_ray(int x, int y)
+{
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+
+	// take into accout highDPI scaling
+	x *= high_dpi_scaling();
+	y *= high_dpi_scaling();
+
+	// in OpenGL y=0 is at the 'bottom'
+	y = viewport[3] - y;
+
+	const float xf = ((float)x - (float)viewport[0]) / ((float)viewport[2]) * 2.0f - 1.0f;
+	const float yf = ((float)y - (float)viewport[1]) / ((float)viewport[3]) * 2.0f - 1.0f;
+
+	const mat4 mvp = projection_matrix_ * modelview_matrix_;
+	const mat4 inv = inverse(mvp);
+	// far plane
+	vec4 p = inv * vec4(xf, yf, 1.f, 1.0f);
+	// near plane
+	vec4 origin = inv * vec4(xf, yf, 0.f, 1.0f);
+	p /= p[3];
+	origin /= origin[3];
+	const vec4 dir = p - origin;
+
+	return { vec3(origin[0], origin[1], origin[2]), normalize(vec3(dir[0], dir[1], dir[2])) };
+
+}

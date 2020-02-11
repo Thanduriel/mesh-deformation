@@ -144,12 +144,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	case GLFW_KEY_S:
 	{
 		viewerMode_ = ViewerMode::Scale;
-
-		if (deformationSpace_ != nullptr)
-		{
-			deformationSpace_->scale(2.f);
-			meshIsDirty_ = true;
-		}
+		break;
 	}
 	case GLFW_KEY_X:
 	{
@@ -159,13 +154,13 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	}
 	case GLFW_KEY_Y:
 	{
-		viewerMode_ = ViewerMode::Translation_Y;
+		viewerMode_ = ViewerMode::Translation_Z;
 		meshHandle_.set_local_axis(1);
 		break;
 	}
 	case GLFW_KEY_Z:
 	{
-		viewerMode_ = ViewerMode::Translation_Z;
+		viewerMode_ = ViewerMode::Translation_Y;
 		meshHandle_.set_local_axis(2);
 		break;
 	}
@@ -251,6 +246,7 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 			rotationHandle(xpos, ypos);
 			break;
 		case ViewerMode::Scale:
+			scaleHandle(xpos, ypos);
 			break;
 		default:
 			break;
@@ -413,4 +409,16 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 
 void VertexSelectionViewer::scaleHandle(float xpos, float ypos)
 {
+	vec2 midScreen = vec2(width() / 2.0f, height() / 2.0f);
+	vec2 currMousePos = vec2(xpos, ypos) - midScreen;
+	vec2 lastPos = vec2(last_point_2d_[0], last_point_2d_[1]) - midScreen;
+
+	float mouseMotionNorm = norm(currMousePos) - norm(lastPos);
+	if (mouseMotionNorm != 0)
+	{
+		std::cout << mouseMotionNorm << std::endl;
+		deformationSpace_->scale(1 + mouseMotionNorm * 0.001f);
+		last_point_2d_ = ivec2(xpos, ypos);
+		meshIsDirty_ = true;
+	}
 }

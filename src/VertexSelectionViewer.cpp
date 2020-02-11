@@ -264,7 +264,8 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 
 void VertexSelectionViewer::mouse(int button, int action, int mods)
 {
-	if (action == GLFW_PRESS && viewerMode_ != ViewerMode::View)
+	if (action == GLFW_PRESS && viewerMode_ != ViewerMode::View 
+		&& meshHandle_.is_hit(get_ray(last_point_2d_[0], last_point_2d_[1])))
 		this->isVertexTranslationMouseActive_ = true;
 	else
 	{

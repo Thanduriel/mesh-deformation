@@ -7,7 +7,7 @@ using namespace pmp;
 VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int height, bool showgui)
 	: TrackballViewer(title, width, height, showgui),
 	brushSize_(0.05),
-	isVertexTranslationActive_(false),
+	viewerMode_(ViewerMode::View),
 	isVertexTranslationMouseActive_(false),
 	pickPosition_(0, 0, 0),
 	pickVertex_(0)
@@ -33,7 +33,7 @@ void VertexSelectionViewer::draw(const std::string& draw_mode)
 		update_mesh();
 		meshIsDirty_ = false;
 	}
-	if (isVertexTranslationActive_)
+	if (viewerMode_ != ViewerMode::View)
 	{
 		meshHandle_.draw(projection_matrix_, modelview_matrix_);
 	}
@@ -105,11 +105,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	}
 	case GLFW_KEY_R:
 	{
-		if (deformationSpace_ != nullptr)
-		{
-			deformationSpace_->rotate(translationNormal_, 5);
-			meshIsDirty_ = true;
-		}
+		viewerMode_ = ViewerMode::Rotation;
 		break;
 	}
 	case GLFW_KEY_I:
@@ -147,6 +143,8 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	}
 	case GLFW_KEY_S:
 	{
+		viewerMode_ = ViewerMode::Scale;
+
 		if (deformationSpace_ != nullptr)
 		{
 			deformationSpace_->scale(2.f);
@@ -155,22 +153,29 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	}
 	case GLFW_KEY_X:
 	{
+		viewerMode_ = ViewerMode::Translation_X;
 		meshHandle_.set_local_axis(0);
 		break;
 	}
 	case GLFW_KEY_Y:
 	{
+		viewerMode_ = ViewerMode::Translation_Y;
 		meshHandle_.set_local_axis(1);
 		break;
 	}
 	case GLFW_KEY_Z:
 	{
+		viewerMode_ = ViewerMode::Translation_Z;
 		meshHandle_.set_local_axis(2);
 		break;
 	}
 	case GLFW_KEY_SPACE:
 	{
-		isVertexTranslationActive_ = !isVertexTranslationActive_;
+		if (viewerMode_ == ViewerMode::View)
+			viewerMode_ = ViewerMode::Translation_Y;
+		else
+			viewerMode_ = ViewerMode::View;
+
 		meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
 		// quick fix to force recompute
 		meshIsDirty_ = true;
@@ -202,7 +207,7 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		// update scene center and bounds
 		BoundingBox bb = mesh_.bounds();
 		set_scene((vec3)bb.center(), 0.5 * bb.size());
-		meshHandle_.set_scale(vec3(bb.size()*0.1f));
+		meshHandle_.set_scale(vec3(bb.size() * 0.1f));
 
 		// compute face & vertex normals, update face indices
 		update_mesh();
@@ -233,17 +238,22 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 {
 	if (isVertexTranslationMouseActive_)
 	{
-		vec2 currMousePos = vec2(xpos, ypos);
-		vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
-		float mouseMotionNorm = pmp::norm(mouseMotion);
-		if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0)
+		switch (viewerMode_)
 		{
-			vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, mouseMotion);
-			deformationSpace_->translate(movement);
-			translationPoint_ += movement;
-			last_point_2d_ = ivec2(xpos, ypos);
-
-			meshIsDirty_ = true;
+		case ViewerMode::View:
+			break;
+		case ViewerMode::Translation_X:
+		case ViewerMode::Translation_Y:
+		case ViewerMode::Translation_Z:
+			translationHandle(xpos, ypos);
+			break;
+		case ViewerMode::Rotation:
+			rotationHandle(xpos, ypos);
+			break;
+		case ViewerMode::Scale:
+			break;
+		default:
+			break;
 		}
 	}
 	else
@@ -254,7 +264,7 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 
 void VertexSelectionViewer::mouse(int button, int action, int mods)
 {
-	if (action == GLFW_PRESS && isVertexTranslationActive_)
+	if (action == GLFW_PRESS && viewerMode_ != ViewerMode::View)
 		this->isVertexTranslationMouseActive_ = true;
 	else
 	{
@@ -312,10 +322,20 @@ void VertexSelectionViewer::process_imgui()
 {
 	if (ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		// output mesh statistics
-	//	ImGui::BulletText("%f X:", pickPosition_[0]);
-	//	ImGui::BulletText("%f Y:", pickPosition_[1]);
-	//	ImGui::BulletText("%f Z:", pickPosition_[2]);
+		ImGui::BulletText("I: Initialize");
+		ImGui::BulletText("Q: Draw handle region");
+		ImGui::BulletText("W: Draw support region");
+		ImGui::BulletText("E: Draw default region");
+		ImGui::BulletText("Space: Activate translation");
+
+		if (viewerMode_ != ViewerMode::View)
+		{
+			ImGui::BulletText("X: Select local x-axis");
+			ImGui::BulletText("Y: Select local y-axis");
+			ImGui::BulletText("Z: Select local z-axis");
+			ImGui::Separator();
+			ImGui::Text(("Current ViewMode " + viewerMode_).c_str());
+		}
 		const BoundingBox bb = mesh_.bounds();
 		ImGui::SliderFloat("BrushSize", &brushSize_, 0.01, bb.size());
 	}
@@ -346,12 +366,51 @@ void VertexSelectionViewer::update_mesh()
 	center_ = (vec3)bb.center();
 	radius_ = 0.5f * bb.size();
 
-	if (isVertexTranslationActive_)
+	if (viewerMode_ != ViewerMode::View)
 	{
 		meshHandle_.set_origin(translationPoint_);
-		meshHandle_.set_orientation(translationNormal_, vec3(0.f,0.f,1.f));
+		meshHandle_.set_orientation(translationNormal_, vec3(0.f, 0.f, 1.f));
 	}
 
 	// re-compute face and vertex normals
 	mesh_.update_opengl_buffers();
+}
+
+void VertexSelectionViewer::translationHandle(float xpos, float ypos)
+{
+	vec2 currMousePos = vec2(xpos, ypos);
+	vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
+	float mouseMotionNorm = pmp::norm(mouseMotion);
+	if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0)
+	{
+		vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, mouseMotion);
+		deformationSpace_->translate(movement);
+		translationPoint_ += movement;
+		last_point_2d_ = ivec2(xpos, ypos);
+		meshIsDirty_ = true;
+	}
+}
+
+void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
+{
+	vec2 midScreen = vec2(width() / 2.0f, height() / 2.0f);
+	vec2 currMousePos = vec2(xpos, ypos) - midScreen;
+	vec2 lastPos = vec2(last_point_2d_[0], last_point_2d_[1]) - midScreen;
+	vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
+	float mouseMotionNorm = pmp::norm(mouseMotion);
+
+	currMousePos.normalize();
+	lastPos.normalize();
+
+	if (mouseMotionNorm > 0)
+	{
+		float angle = (atan2(lastPos[1], lastPos[0]) - atan2(currMousePos[1], currMousePos[0])) * 180.0f / M_PI;
+		deformationSpace_->rotate(translationNormal_, angle);
+		last_point_2d_ = ivec2(xpos, ypos);
+		meshIsDirty_ = true;
+	}
+}
+
+void VertexSelectionViewer::scaleHandle(float xpos, float ypos)
+{
 }

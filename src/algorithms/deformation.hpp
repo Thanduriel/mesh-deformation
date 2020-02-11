@@ -1,4 +1,6 @@
 #pragma once
+#define _USE_MATH_DEFINES
+
 
 #include <pmp/SurfaceMesh.h>
 #include <Eigen/Sparse>

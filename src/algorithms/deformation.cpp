@@ -9,7 +9,7 @@ namespace algorithm {
 
 	using Triplet = Eigen::Triplet<double>;
 	using DenseMatrix = Eigen::MatrixXd;
-		//Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::AutoAlign | Eigen::RowMajor>;
+	//Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::AutoAlign | Eigen::RowMajor>;
 
 	Deformation::Deformation(SurfaceMesh& mesh)
 		: mesh_(mesh),
@@ -33,7 +33,7 @@ namespace algorithm {
 		mesh_.remove_vertex_property(smoothness_);
 	}
 
-	void Deformation::set_regions(const std::vector<Vertex>& supportVertices, 
+	void Deformation::set_regions(const std::vector<Vertex>& supportVertices,
 		const std::vector<Vertex>& handleVertices)
 	{
 		for (Vertex v : mesh_.vertices())
@@ -112,6 +112,22 @@ namespace algorithm {
 
 	void Deformation::rotate(const Normal& axis, Scalar angle)
 	{
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+
+		// find center point
+		Point p(0.f);
+		for (Vertex v : handleVertices_) p += points[v];
+		p /= handleVertices_.size();
+
+		mat4 rotMat = rotation_matrix(axis, angle);
+
+		for (Vertex v : handleVertices_)
+		{
+			vec3 transVertex = points[v] - p;
+			vec4 rotVertex = rotMat * vec4(transVertex, 0);
+			points[v] = vec3(rotVertex[0], rotVertex[1], rotVertex[2]) + p;
+		}
+		update_support_region();
 	}
 
 	void Deformation::update_support_region()
@@ -151,7 +167,7 @@ namespace algorithm {
 			}
 			return res;
 		};
-		
+
 		const DenseMatrix X = true ? solve(Eigen::SparseLU<SparseMatrix>(laplace1_))
 			: solve(Eigen::SimplicialLDLT<SparseMatrix>(laplace1_));
 		// apply result
@@ -224,14 +240,14 @@ namespace algorithm {
 				diagonal[meshIdx_[v]] = std::clamp(smoothness_[v] - i, Scalar(0.0), Scalar(1.0));
 			lOperator = smoothnessScale_ * L * lOperator;
 		}
-	/*	if (laplaceOrder_ == 1)
-			lOperator = L;
-		if (laplaceOrder_ == 2)
-			lOperator = L * L;
-		else if (laplaceOrder_ == 3)
-			lOperator = L * L * L;*/
+		/*	if (laplaceOrder_ == 1)
+				lOperator = L;
+			if (laplaceOrder_ == 2)
+				lOperator = L * L;
+			else if (laplaceOrder_ == 3)
+				lOperator = L * L * L;*/
 
-		// extract submatrix of marked regions and reorder acording to idx_
+				// extract submatrix of marked regions and reorder acording to idx_
 		std::vector<Triplet> tripletsL1;
 		std::vector<Triplet> tripletsL2;
 		for (std::size_t i = 0; i < numFree; ++i)
@@ -275,7 +291,7 @@ namespace algorithm {
 		for (Vertex v : supportVertices_) markNeigbhours(v);
 
 		size_t begin = 0;
-		for (int j = 0; j < ringSize-1; ++j)
+		for (int j = 0; j < ringSize - 1; ++j)
 		{
 			const size_t end = boundaryVertices_.size();
 			for (size_t i = begin; i < end; ++i)

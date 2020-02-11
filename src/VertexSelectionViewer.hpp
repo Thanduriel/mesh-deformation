@@ -74,6 +74,8 @@ public:
 
 	void update_mesh();
 
+	// Compute ray going through a screen position.
+	Ray get_ray(int x, int y);
 private:
 	void translationHandle(float xpos, float ypos);
 	void rotationHandle(float xpos, float ypos);

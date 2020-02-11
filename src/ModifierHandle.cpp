@@ -1,5 +1,6 @@
 #include "ModifierHandle.hpp"
-
+#include "algorithms/intersection.hpp"
+#include <iostream>
 
 ModifierHandle::ModifierHandle()
 	: scaleMatrix_(scaling_matrix(1.f))
@@ -65,4 +66,33 @@ void ModifierHandle::set_orientation(const Normal& forward, const Normal& up)
 	const vec3 defForward(0.f, 0.f, 1.f);
 	const float angle = acos(dot(forwardN, defForward)) * 360.f / (2.f * 3.1415f);
 	modelMatrix_ = translation_matrix(origin_) * transpose(rotation_matrix(cross(forwardN, defForward), angle)) * scaleMatrix_;
+	modelMatrixInverse_ = inverse(modelMatrix_);
+}
+
+bool ModifierHandle::is_hit(const Ray& ray) const
+{
+	Ray localRay;
+	const vec4 origin = modelMatrixInverse_ * pmp::vec4(ray.origin, 1.f);
+	const vec4 direction = modelMatrixInverse_ * pmp::vec4(ray.direction, 0.f);
+//	vec4 p = modelMatrixInverse_ * pmp::vec4(ray.origin + ray.direction, 1.f);;
+//	direction = p - origin;
+	localRay.origin = vec3(origin[0], origin[1], origin[2]);
+	localRay.direction = vec3(direction[0], direction[1], direction[2]);
+
+	auto points = arrowMesh_.get_vertex_property<Point>("v:point");
+
+	for (Face f : arrowMesh_.faces())
+	{
+		auto it = arrowMesh_.vertices(f).begin();
+		const vec3& p0 = points[*it]; ++it;
+		const vec3& p1 = points[*it]; ++it;
+		const vec3& p2 = points[*it];
+
+		if (algorithm::intersect(localRay, p0, p1, p2, 10000.f))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }

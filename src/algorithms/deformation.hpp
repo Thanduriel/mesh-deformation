@@ -52,6 +52,7 @@ namespace algorithm {
 		SparseMatrix laplace2_; // boundary region 
 		Eigen::DiagonalMatrix<double, Eigen::Dynamic> areaScale_;
 		Eigen::DiagonalMatrix<double, Eigen::Dynamic> smoothnessScale_;
+		Eigen::SparseLU<SparseMatrix> solver_;
 		int laplaceOrder_;
 		bool useAreaScaling_ = false;
 	};

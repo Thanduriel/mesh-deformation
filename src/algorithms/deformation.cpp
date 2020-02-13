@@ -157,19 +157,13 @@ namespace algorithm {
 		}
 
 		const DenseMatrix B = /*areaScale_ **/ -laplace2_ * x2;
-		auto solve = [&B](const auto& solver)
+		const DenseMatrix X = solver_.solve(B);
+		if (solver_.info() != Eigen::Success)
 		{
-			DenseMatrix res = solver.solve(B);
-			if (solver.info() != Eigen::Success)
-			{
-				std::cerr << "Deformation: Could not solve linear system\n";
-				throw 42;
-			}
-			return res;
-		};
+			std::cerr << "Deformation: Could not solve linear system\n";
+			throw 42;
+		}
 
-		const DenseMatrix X = true ? solve(Eigen::SparseLU<SparseMatrix>(laplace1_))
-			: solve(Eigen::SimplicialLDLT<SparseMatrix>(laplace1_));
 		// apply result
 		for (size_t i = 0; i < numFree; ++i)
 		{
@@ -190,7 +184,7 @@ namespace algorithm {
 		auto vweights = mesh_.add_vertex_property<Scalar>("v:area");
 		for (Vertex v : mesh_.vertices())
 		{
-			vweights[v] = 0.5 * voronoi_area_barycentric(mesh_, v);
+			vweights[v] = 0.5 / voronoi_area(mesh_, v);
 			areaScale_.diagonal()[meshIdx_[v]] = vweights[v];
 		}
 
@@ -269,6 +263,8 @@ namespace algorithm {
 		laplace1_.setFromTriplets(tripletsL1.begin(), tripletsL1.end());
 		laplace2_.resize(numFree, numFixed);
 		laplace2_.setFromTriplets(tripletsL2.begin(), tripletsL2.end());
+
+		solver_.compute(laplace1_);
 	}
 
 	void Deformation::compute_boundary_set(int ringSize)

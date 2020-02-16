@@ -34,7 +34,11 @@ namespace algorithm {
 
 	inline int float_to_int_cast(float f)
 	{
-		return *reinterpret_cast<int*>(&f);
+		assert(sizeof(float) == sizeof int);
+		int res;
+		memcpy(&res, &f, sizeof(float));
+		return res;
+		//return *reinterpret_cast<int*>(&f);
 	}
 
 	static bool isect_hh(vec3 o, vec3 d, float* t, float maxDist, const isect_hh_data& D) 

@@ -1,7 +1,7 @@
 #include "VertexSelectionViewer.hpp"
 #include "algorithms/deformation.hpp"
 #include <pmp/algorithms/SurfaceNormals.h>
-
+#include "utils/validation.hpp"
 using namespace pmp;
 
 VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int height, bool showgui)
@@ -220,7 +220,11 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		// print mesh statistic
 		std::cout << "Load " << filename << ": " << mesh_.n_vertices()
 			<< " vertices, " << mesh_.n_faces() << " faces\n";
-
+		auto vProp = mesh_.get_vertex_property<Color>("v:col");
+		const auto& [face, angle] = util::find_min_angle(mesh_);
+		std::cout << angle << "\n";
+		for(Vertex v : mesh_.vertices(face))
+			vProp[v] = Color(1, 1, 1);
 		filename_ = filename;
 		return true;
 	}

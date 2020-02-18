@@ -7,6 +7,8 @@ ModifierHandle::ModifierHandle()
 {
 	arrowMesh_.read("../models/arrow.off");
 	arrowMesh_.update_opengl_buffers();
+
+	precompute_intersection_structure();
 }
 
 ModifierHandle::~ModifierHandle()
@@ -79,7 +81,23 @@ bool ModifierHandle::is_hit(const Ray& ray) const
 	localRay.origin = vec3(origin[0], origin[1], origin[2]);
 	localRay.direction = vec3(direction[0], direction[1], direction[2]);
 
+	auto triangles = arrowMesh_.get_face_property<algorithm::IntersectionTriangle>("f:intersect");
+
+	for (Face f : arrowMesh_.faces())
+	{
+		if (algorithm::intersect(localRay, triangles[f], 10000.f))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void ModifierHandle::precompute_intersection_structure()
+{
 	auto points = arrowMesh_.get_vertex_property<Point>("v:point");
+	auto triangles = arrowMesh_.add_face_property<algorithm::IntersectionTriangle>("f:intersect");
 
 	for (Face f : arrowMesh_.faces())
 	{
@@ -88,11 +106,6 @@ bool ModifierHandle::is_hit(const Ray& ray) const
 		const vec3& p1 = points[*it]; ++it;
 		const vec3& p2 = points[*it];
 
-		if (algorithm::intersect(localRay, p0, p1, p2, 10000.f))
-		{
-			return true;
-		}
+		triangles[f] = algorithm::IntersectionTriangle(p0, p1, p2);
 	}
-
-	return false;
 }

@@ -6,30 +6,21 @@ namespace algorithm {
 
 	// taken from https://stackoverflow.com/a/44837726
 
-	struct isect_hh_data 
-	{
-		vec3 n0; float d0;
-		vec3 n1; float d1;
-		vec3 n2; float d2;
-	};
-
-	static isect_hh_data isect_hh_pre(vec3 v0, vec3 v1, vec3 v2)
+	IntersectionTriangle::IntersectionTriangle(const vec3& v0, const vec3& v1, const vec3& v2)
 	{
 		vec3 e1 = v1 - v0;
 		vec3 e2 = v2 - v0;
-		isect_hh_data D;
-		D.n0 = cross(e1, e2);
-		D.d0 = dot(D.n0, v0);
 
-		float inv_denom = 1 / dot(D.n0, D.n0);
+		n0 = cross(e1, e2);
+		d0 = dot(n0, v0);
 
-		D.n1 = cross(e2, D.n0) * inv_denom;
-		D.d1 = -dot(D.n1, v0);
+		float inv_denom = 1 / dot(n0, n0);
 
-		D.n2 = cross(D.n0, e1) * inv_denom;
-		D.d2 = -dot(D.n2, v0);
+		n1 = cross(e2, n0) * inv_denom;
+		d1 = -dot(n1, v0);
 
-		return D;
+		n2 = cross(n0, e1) * inv_denom;
+		d2 = -dot(n2, v0);
 	}
 
 	inline int float_to_int_cast(float f)
@@ -41,7 +32,7 @@ namespace algorithm {
 		//return *reinterpret_cast<int*>(&f);
 	}
 
-	static bool isect_hh(vec3 o, vec3 d, float* t, float maxDist, const isect_hh_data& D) 
+	static bool intersect(vec3 o, vec3 d, float* t, float maxDist, const IntersectionTriangle& D)
 	{
 		vec2 uv;
 
@@ -68,10 +59,17 @@ namespace algorithm {
 	std::optional<float> intersect(const Ray& ray, 
 		const pmp::vec3& p0, const pmp::vec3& p1, const pmp::vec3& p2, float maxDist)
 	{
-		const isect_hh_data triangle = isect_hh_pre(p0, p1, p2);
-		float dist;
-		return isect_hh(ray.origin, ray.direction, &dist, maxDist, triangle)
-			? std::optional<float>(dist) : std::nullopt;
+		const IntersectionTriangle triangle(p0, p1, p2);
 		
+		return intersect(ray, triangle, maxDist);	
+	}
+
+	std::optional<float> intersect(const Ray& ray,
+		const IntersectionTriangle& triangle, float maxDist)
+	{
+		float dist;
+		return intersect(ray.origin, ray.direction, &dist, maxDist, triangle)
+			? std::optional<float>(dist) : std::nullopt;
+
 	}
 }

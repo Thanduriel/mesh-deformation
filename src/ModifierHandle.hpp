@@ -30,6 +30,8 @@ public:
 
 	bool is_hit(const Ray& ray) const;
 private:
+	void precompute_intersection_structure();
+
 	SurfaceColorMesh arrowMesh_;
 
 	vec3 origin_;

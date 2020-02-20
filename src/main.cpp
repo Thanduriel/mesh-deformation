@@ -11,7 +11,7 @@ int main()
 //	m.write("plane_rand.off");
 //	return 0;
 //	const char* meshFile = "../dependencies/pmp-library/external/pmp-data/off/elephant.off";
-	const char* meshFile = "../models/plane_rand.off";
+	const char* meshFile = "../models/plane.off";
 	VertexSelectionViewer window("hello world! Test", 1366, 768);
 	window.load_mesh(meshFile);
 	window.run();

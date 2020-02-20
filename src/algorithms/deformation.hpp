@@ -4,6 +4,7 @@
 
 #include <pmp/SurfaceMesh.h>
 #include <Eigen/Sparse>
+#include <Eigen/SparseCholesky>
 
 namespace algorithm {
 
@@ -52,7 +53,7 @@ namespace algorithm {
 		SparseMatrix laplace2_; // boundary region 
 		Eigen::DiagonalMatrix<double, Eigen::Dynamic> areaScale_;
 		Eigen::DiagonalMatrix<double, Eigen::Dynamic> smoothnessScale_;
-		Eigen::SparseLU<SparseMatrix> solver_;
+		Eigen::SparseLU<SparseMatrix> solver_; // SparseLU, SimplicialLLT, SimplicialLDLT
 		int laplaceOrder_;
 		bool useAreaScaling_ = false;
 	};

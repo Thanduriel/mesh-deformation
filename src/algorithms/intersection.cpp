@@ -25,7 +25,7 @@ namespace algorithm {
 
 	inline int float_to_int_cast(float f)
 	{
-		assert(sizeof(float) == sizeof int);
+		assert(sizeof(float) == sizeof(int));
 		int res;
 		memcpy(&res, &f, sizeof(float));
 		return res;

@@ -1,7 +1,6 @@
 #include "deformation.hpp"
 #include <pmp/algorithms/DifferentialGeometry.h>
-#include <Eigen/Sparse>
-#include<Eigen/SparseQR>
+#include <chrono>
 
 namespace algorithm {
 
@@ -157,7 +156,12 @@ namespace algorithm {
 		}
 
 		const DenseMatrix B = /*areaScale_ **/ -laplace2_ * x2;
+		
+		auto begin = std::chrono::high_resolution_clock::now();
 		const DenseMatrix X = solver_.solve(B);
+		auto end = std::chrono::high_resolution_clock::now();
+	//	std::cout << std::chrono::duration<double>(end - begin).count() << "\n";
+		
 		if (solver_.info() != Eigen::Success)
 		{
 			std::cerr << "Deformation: Could not solve linear system\n";
@@ -223,25 +227,20 @@ namespace algorithm {
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
 		const SparseMatrixR L = useAreaScaling_ ? areaScale_ * laplacian_ : laplacian_;
-		SparseMatrixR lOperator(L.rows(), L.cols());
-		lOperator.setIdentity();
-		for (int i = 0; i < laplaceOrder_; ++i)
+		SparseMatrixR lOperator = laplacian_;
+		for (int i = laplaceOrder_- 2; i >= 0; --i)
 		{
 			auto& diagonal = smoothnessScale_.diagonal();
 			for (Vertex v : handleVertices_)
 				diagonal[meshIdx_[v]] = std::clamp(smoothness_[v] - i, Scalar(0.0), Scalar(1.0));
 			for (Vertex v : boundaryVertices_)
 				diagonal[meshIdx_[v]] = std::clamp(smoothness_[v] - i, Scalar(0.0), Scalar(1.0));
-			lOperator = smoothnessScale_ * L * lOperator;
+			lOperator = lOperator * smoothnessScale_ * L;
 		}
-		/*	if (laplaceOrder_ == 1)
-				lOperator = L;
-			if (laplaceOrder_ == 2)
-				lOperator = L * L;
-			else if (laplaceOrder_ == 3)
-				lOperator = L * L * L;*/
+		SparseMatrix LDif = SparseMatrix(lOperator) - lOperator.transpose();
+		std::cout << "L: " << LDif.norm() << std::endl;
 
-				// extract submatrix of marked regions and reorder acording to idx_
+		// extract submatrix of marked regions and reorder acording to idx_
 		std::vector<Triplet> tripletsL1;
 		std::vector<Triplet> tripletsL2;
 		for (std::size_t i = 0; i < numFree; ++i)
@@ -263,8 +262,11 @@ namespace algorithm {
 		laplace1_.setFromTriplets(tripletsL1.begin(), tripletsL1.end());
 		laplace2_.resize(numFree, numFixed);
 		laplace2_.setFromTriplets(tripletsL2.begin(), tripletsL2.end());
-
+		std::cout << "L1: " << (laplace1_ - SparseMatrix(laplace1_.transpose())).norm() << std::endl;
+		auto begin = std::chrono::high_resolution_clock::now();
 		solver_.compute(laplace1_);
+		auto end = std::chrono::high_resolution_clock::now();
+	//	std::cout << "decomposition:" << std::chrono::duration<double>(end - begin).count() << "\n";
 	}
 
 	void Deformation::compute_boundary_set(int ringSize)

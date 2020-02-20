@@ -17,9 +17,9 @@ namespace algorithm {
 		IntersectionTriangle() = default;
 		IntersectionTriangle(const pmp::vec3& p0, const pmp::vec3& p1, const pmp::vec3& p2);
 
-		pmp::vec3 n0; float d0;
-		pmp::vec3 n1; float d1;
-		pmp::vec3 n2; float d2;
+		pmp::vec3 n0; float d0 = 0.f;
+		pmp::vec3 n1; float d1 = 0.f;
+		pmp::vec3 n2; float d2 = 0.f;
 	};
 
 	std::optional<float> intersect(const Ray& ray, 

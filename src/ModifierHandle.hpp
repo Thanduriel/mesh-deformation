@@ -13,6 +13,15 @@ namespace algorithm {
 	class Deformation;
 }
 
+enum class EMode
+{
+	None,
+	Translation_X,
+	Translation_Y,
+	Translation_Z
+};
+
+
 class ModifierHandle {
 public:
 	ModifierHandle();
@@ -21,26 +30,36 @@ public:
 	void draw(const mat4& projection_matrix, const mat4& view_matrix);
 
 	void set_scale(const vec3 scale);
-	void set_origin(const vec3& origin);
-	void set_orientation(const Normal& forward, const Normal& up);
+	void set_origin(const vec3& origin, const vec3& normal);
 
 	vec3 compute_move_vector(const mat4& modelviewProjection, vec2 motion);
 	void init_local_coordinate_system(mat4 modelview, vec3 normal);
-	void set_local_axis(int axis);
 
-	bool is_hit(const Ray& ray) const;
+	bool is_hit(const Ray& ray);
 private:
 	void precompute_intersection_structure();
+	void precompute_intersection_structure(SurfaceColorMesh& mesh);
+	
+	void precompute_modelViewMatrix();
+	mat4 compute_modelViewMatrix(vec3 forward);
 
-	SurfaceColorMesh arrowMesh_;
+	bool is_hit(const Ray& ray, mat4 modelMatrixInverse,const SurfaceColorMesh& mesh) const;
+
+	SurfaceColorMesh arrowMesh_LocalX_;
+	SurfaceColorMesh arrowMesh_LocalY_;
+	SurfaceColorMesh arrowMesh_LocalZ_;
 
 	vec3 origin_;
-	mat4 modelMatrix_;
-	mat4 modelMatrixInverse_;
+	mat4 modelMatrixX_;
+	mat4 modelMatrixInverseX_;
+	mat4 modelMatrixY_;
+	mat4 modelMatrixInverseY_;
+	mat4 modelMatrixZ_;
+	mat4 modelMatrixInverseZ_;
 	mat4 scaleMatrix_;
 	vec3 local_x_;
 	vec3 local_y_;
 	vec3 local_z_;
 
-	vec3 currMoveAxis_;
+	EMode mode_;
 };

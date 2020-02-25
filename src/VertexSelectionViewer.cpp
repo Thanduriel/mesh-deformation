@@ -146,24 +146,6 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		viewerMode_ = ViewerMode::Scale;
 		break;
 	}
-	case GLFW_KEY_X:
-	{
-		viewerMode_ = ViewerMode::Translation_X;
-		meshHandle_.set_local_axis(0);
-		break;
-	}
-	case GLFW_KEY_Y:
-	{
-		viewerMode_ = ViewerMode::Translation_Z;
-		meshHandle_.set_local_axis(1);
-		break;
-	}
-	case GLFW_KEY_Z:
-	{
-		viewerMode_ = ViewerMode::Translation_Y;
-		meshHandle_.set_local_axis(2);
-		break;
-	}
 	case GLFW_KEY_SPACE:
 	{
 		if (viewerMode_ == ViewerMode::View)
@@ -223,7 +205,7 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		auto vProp = mesh_.get_vertex_property<Color>("v:col");
 		const auto& [face, angle] = util::find_min_angle(mesh_);
 		std::cout << angle << "\n";
-		for(Vertex v : mesh_.vertices(face))
+		for (Vertex v : mesh_.vertices(face))
 			vProp[v] = Color(1, 1, 1);
 		filename_ = filename;
 		return true;
@@ -264,7 +246,7 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 
 void VertexSelectionViewer::mouse(int button, int action, int mods)
 {
-	if (action == GLFW_PRESS && viewerMode_ != ViewerMode::View 
+	if (action == GLFW_PRESS && viewerMode_ != ViewerMode::View
 		&& meshHandle_.is_hit(get_ray(last_point_2d_[0], last_point_2d_[1])))
 		this->isVertexTranslationMouseActive_ = true;
 	else
@@ -369,8 +351,7 @@ void VertexSelectionViewer::update_mesh()
 
 	if (viewerMode_ != ViewerMode::View)
 	{
-		meshHandle_.set_origin(translationPoint_);
-		meshHandle_.set_orientation(translationNormal_, vec3(0.f, 0.f, 1.f));
+		meshHandle_.set_origin(translationPoint_, translationNormal_);
 	}
 
 	// re-compute face and vertex normals

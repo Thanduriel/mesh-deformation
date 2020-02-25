@@ -24,6 +24,27 @@ VertexSelectionViewer::~VertexSelectionViewer()
 
 void VertexSelectionViewer::do_processing()
 {
+	if (isVertexTranslationMouseActive_)
+	{
+		switch (viewerMode_)
+		{
+		case ViewerMode::View:
+			break;
+		case ViewerMode::Translation_X:
+		case ViewerMode::Translation_Y:
+		case ViewerMode::Translation_Z:
+			translationHandle(mousePosX_, mousePosY_);
+			break;
+		case ViewerMode::Rotation:
+			rotationHandle(mousePosX_, mousePosY_);
+			break;
+		case ViewerMode::Scale:
+			scaleHandle(mousePosX_, mousePosY_);
+			break;
+		default:
+			break;
+		}
+	}
 }
 
 void VertexSelectionViewer::draw(const std::string& draw_mode)
@@ -217,28 +238,10 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 
 void VertexSelectionViewer::motion(double xpos, double ypos)
 {
-	if (isVertexTranslationMouseActive_)
-	{
-		switch (viewerMode_)
-		{
-		case ViewerMode::View:
-			break;
-		case ViewerMode::Translation_X:
-		case ViewerMode::Translation_Y:
-		case ViewerMode::Translation_Z:
-			translationHandle(xpos, ypos);
-			break;
-		case ViewerMode::Rotation:
-			rotationHandle(xpos, ypos);
-			break;
-		case ViewerMode::Scale:
-			scaleHandle(xpos, ypos);
-			break;
-		default:
-			break;
-		}
-	}
-	else
+	mousePosX_ = xpos;
+	mousePosY_ = ypos;
+
+	if(!isVertexTranslationMouseActive_)
 	{
 		TrackballViewer::motion(xpos, ypos);
 	}
@@ -248,7 +251,9 @@ void VertexSelectionViewer::mouse(int button, int action, int mods)
 {
 	if (action == GLFW_PRESS && viewerMode_ != ViewerMode::View
 		&& meshHandle_.is_hit(get_ray(last_point_2d_[0], last_point_2d_[1])))
+	{
 		this->isVertexTranslationMouseActive_ = true;
+	}
 	else
 	{
 		this->isVertexTranslationMouseActive_ = false;

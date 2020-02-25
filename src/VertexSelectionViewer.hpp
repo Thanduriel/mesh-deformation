@@ -98,5 +98,8 @@ private:
 	pmp::Vertex pickVertex_;
 	bool meshIsDirty_ = true;
 
+	double mousePosX_ = 0.0;
+	double mousePosY_ = 0.0;
+
 
 };

@@ -41,6 +41,15 @@ inline std::string operator+(std::string os, ViewerMode c)
 
 class VertexSelectionViewer : public pmp::TrackballViewer {
 public:
+	enum struct VertexDrawingMode
+	{
+		None,
+		Clear,
+		Handle,
+		Support,
+		COUNT
+	};
+
 	VertexSelectionViewer(const char* title, int width, int height, bool showgui = true);
 
 	~VertexSelectionViewer();
@@ -72,7 +81,10 @@ private:
 	void translationHandle(float xpos, float ypos);
 	void rotationHandle(float xpos, float ypos);
 	void scaleHandle(float xpos, float ypos);
+	void init_modifier();
+	void draw_on_mesh();
 
+	VertexDrawingMode vertexDrawingMode_ = VertexDrawingMode::None;
 	float brushSize_;
 	int operatorOrder_ = 3;
 	float smoothness_ = 2.f;
@@ -81,6 +93,7 @@ private:
 	std::string filename_;
 	ViewerMode viewerMode_;
 	bool isVertexTranslationMouseActive_;
+	bool isMouseDown_ = false;
 	pmp::Normal translationNormal_;
 	pmp::Point translationPoint_;
 

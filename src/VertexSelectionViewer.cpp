@@ -2,7 +2,17 @@
 #include "algorithms/deformation.hpp"
 #include <pmp/algorithms/SurfaceNormals.h>
 #include "utils/validation.hpp"
+#include <array>
+
 using namespace pmp;
+
+const std::array<Color, static_cast<size_t>(VertexSelectionViewer::VertexDrawingMode::COUNT)> COLORS =
+{
+	Color(0.f,0.f,0.f),
+	Color(1.f,0.f,0.f),
+	Color(0.f,1.f,0.f),
+	Color(0.f,0.f,1.f)
+};
 
 VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int height, bool showgui)
 	: TrackballViewer(title, width, height, showgui),
@@ -64,118 +74,64 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	if (action != GLFW_PRESS && action != GLFW_REPEAT)
 		return;
 
+	if (viewerMode_ == ViewerMode::View)
+	{
+		switch (key)
+		{
+		case GLFW_KEY_C: //clear 
+		{
+			auto vProp = mesh_.get_vertex_property<Color>("v:col");
+			for (auto v : mesh_.vertices())
+				vProp[v] = COLORS[static_cast<size_t>(VertexDrawingMode::Clear)];
+
+			meshIsDirty_ = true;
+			return;
+		}
+		case GLFW_KEY_W: //support region
+			vertexDrawingMode_ = VertexDrawingMode::Support;
+			return;
+		case GLFW_KEY_Q: //handle region
+			vertexDrawingMode_ = VertexDrawingMode::Handle;
+			return;
+		case GLFW_KEY_E:
+			vertexDrawingMode_ = VertexDrawingMode::Clear;
+			return;
+		case GLFW_KEY_R:
+			vertexDrawingMode_ = VertexDrawingMode::None;
+			return;
+		case GLFW_KEY_SPACE:
+			viewerMode_ = ViewerMode::Translation;
+			vertexDrawingMode_ = VertexDrawingMode::None;
+			init_modifier();
+			return;
+		}
+	}
+	else
+	{
+		switch (key)
+		{
+		case GLFW_KEY_R:
+			viewerMode_ = ViewerMode::Rotation;
+			return;
+		case GLFW_KEY_3:
+			deformationSpace_->set_area_scaling(!deformationSpace_->get_area_scaling());
+			meshIsDirty_ = true;
+			return;
+		case GLFW_KEY_S:
+			viewerMode_ = ViewerMode::Scale;
+			return;
+		case GLFW_KEY_SPACE:
+			viewerMode_ = ViewerMode::View;
+			return;
+		}
+	}
+
+	// mode independend inputs
 	switch (key)
 	{
 	case GLFW_KEY_BACKSPACE: // reload model
 	{
 		load_mesh(filename_.c_str());
-		deformationSpace_.reset(nullptr);
-		break;
-	}
-	case GLFW_KEY_W: //support region
-	{
-		TrackballViewer::pick(pickPosition_);
-		double x = 0;
-		double y = 0;
-		cursor_pos(x, y);
-		auto vVector = pick_vertex(x, y, brushSize_);
-
-		if (!vVector.empty())
-		{
-			auto vProp = mesh_.get_vertex_property<Color>("v:col");
-			for (auto v : vVector)
-				vProp[v] = Color(0, 0, 1);
-			meshIsDirty_ = true;
-		}
-		break;
-	}
-	case GLFW_KEY_Q: //handle region
-	{
-		TrackballViewer::pick(pickPosition_);
-		double x = 0;
-		double y = 0;
-		cursor_pos(x, y);
-		auto vVector = pick_vertex(x, y, brushSize_);
-
-		if (!vVector.empty())
-		{
-			auto vProp = mesh_.get_vertex_property<Color>("v:col");
-			for (auto v : vVector)
-				vProp[v] = Color(0, 1, 0);
-			meshIsDirty_ = true;
-		}
-		break;
-	}
-	case GLFW_KEY_E:
-	{
-		TrackballViewer::pick(pickPosition_);
-		double x = 0;
-		double y = 0;
-		cursor_pos(x, y);
-		auto v = pick_vertex(x, y);
-
-		if (v.is_valid())
-		{
-			auto vProp = mesh_.get_vertex_property<Color>("v:col");
-			vProp[v] = Color(1, 0, 0);
-			meshIsDirty_ = true;
-		}
-		break;
-	}
-	case GLFW_KEY_R:
-	{
-		viewerMode_ = ViewerMode::Rotation;
-		meshHandle_.set_rotationMode();
-		break;
-	}
-	case GLFW_KEY_I:
-	{
-		deformationSpace_ = std::make_unique<algorithm::Deformation>(mesh_);
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-		auto colors = mesh_.get_vertex_property<Color>("v:col");
-		std::vector<Vertex> supportVertices;
-		std::vector<Vertex> handleVertices;
-		pmp::Normal normal(0, 0, 0);
-		pmp::Point handlePoint(0, 0, 0);
-		int pointIndex = 0;
-
-		for (Vertex v : mesh_.vertices())
-		{
-			if (colors[v] == Color(0, 1, 0))
-			{
-				handleVertices.push_back(v);
-				normal += SurfaceNormals::compute_vertex_normal(mesh_, v);
-				handlePoint += points[v];
-				pointIndex++;
-			}
-			else if (colors[v] == Color(0, 0, 1))
-			{
-				supportVertices.push_back(v);
-			}
-		}
-
-		translationPoint_ = handlePoint / pointIndex;
-		normal.normalize();
-		translationNormal_ = normal;
-
-		deformationSpace_->set_regions(supportVertices, handleVertices);
-		meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
-
-		break;
-	}
-	case GLFW_KEY_S:
-	{
-		viewerMode_ = ViewerMode::Scale;
-		meshHandle_.set_scaleMode();
-		break;
-	}
-	case GLFW_KEY_SPACE:
-	{
-		viewerMode_ = ViewerMode::Translation;
-
-		meshHandle_.set_translationMode();
-		// quick fix to force recompute
-		meshIsDirty_ = true;
 		break;
 	}
 	case GLFW_KEY_1:
@@ -184,16 +140,12 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	case GLFW_KEY_2:
 		set_draw_mode("Wireframe");
 		break;
-	case GLFW_KEY_3:
-		deformationSpace_->set_area_scaling(!deformationSpace_->get_area_scaling());
-		meshIsDirty_ = true;
-		break;
 	default:
-	{
-		TrackballViewer::keyboard(key, scancode, action, mods);
-		break;
+		// Q would close the window
+		if (key != GLFW_KEY_Q)
+			TrackballViewer::keyboard(key, scancode, action, mods);
 	}
-	}
+		
 }
 
 bool VertexSelectionViewer::load_mesh(const char* filename)
@@ -228,6 +180,10 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		for (Vertex v : mesh_.vertices(face))
 			vProp[v] = Color(1, 1, 1);
 		filename_ = filename;
+
+		// construct modifier
+		deformationSpace_ = std::make_unique<algorithm::Deformation>(mesh_);
+
 		return true;
 	}
 
@@ -240,22 +196,29 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 	mousePosX_ = xpos;
 	mousePosY_ = ypos;
 
-	if (!isVertexTranslationMouseActive_)
+	if(!isVertexTranslationMouseActive_)
 	{
-		TrackballViewer::motion(xpos, ypos);
+		if (vertexDrawingMode_ == VertexDrawingMode::None)
+			TrackballViewer::motion(xpos, ypos);
+		else if (isMouseDown_)
+			draw_on_mesh();
 	}
 }
 
 void VertexSelectionViewer::mouse(int button, int action, int mods)
 {
+	isMouseDown_ = action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_1;
 	if (action == GLFW_PRESS && viewerMode_ != ViewerMode::View
 		&& meshHandle_.is_hit(get_ray(last_point_2d_[0], last_point_2d_[1])))
 	{
-		this->isVertexTranslationMouseActive_ = true;
+		isVertexTranslationMouseActive_ = true;
 	}
 	else
 	{
-		this->isVertexTranslationMouseActive_ = false;
+		if (vertexDrawingMode_ != VertexDrawingMode::None && viewerMode_ == ViewerMode::View)
+			draw_on_mesh();
+
+		isVertexTranslationMouseActive_ = false;
 		TrackballViewer::mouse(button, action, mods);
 	}
 }
@@ -309,12 +272,13 @@ void VertexSelectionViewer::process_imgui()
 {
 	if (ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::BulletText("I: Initialize");
-		ImGui::BulletText("Q: Draw handle region");
-		ImGui::BulletText("W: Draw support region");
-		ImGui::BulletText("E: Draw default region");
-		ImGui::BulletText("Space: Activate translation");
-
+		if (ImGui::CollapsingHeader("Help", ImGuiTreeNodeFlags_None))
+		{
+			ImGui::BulletText("Space: Activate Modifier");
+			ImGui::BulletText("Q: Draw handle region");
+			ImGui::BulletText("W: Draw support region");
+			ImGui::BulletText("E: Draw default region");
+		}
 		if (viewerMode_ != ViewerMode::View)
 		{
 			ImGui::BulletText("X: Select local x-axis");
@@ -324,9 +288,9 @@ void VertexSelectionViewer::process_imgui()
 			ImGui::Text(("Current ViewMode " + viewerMode_).c_str());
 		}
 		const BoundingBox bb = mesh_.bounds();
-		ImGui::SliderFloat("BrushSize", &brushSize_, 0.01, bb.size());
+		ImGui::SliderFloat("BrushSize", &brushSize_, 0.01, bb.size() * 0.5);
 	}
-	if (deformationSpace_ && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
+	if (deformationSpace_->is_set() && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		if (ImGui::SliderInt("Order", &operatorOrder_, 1, 3))
 		{
@@ -367,10 +331,9 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 	vec2 currMousePos = vec2(xpos, ypos);
 	vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
 	float mouseMotionNorm = pmp::norm(mouseMotion);
-	vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, mouseMotion);
-
-	if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0 && norm(movement) > 0)
+	if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0)
 	{
+		vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, mouseMotion);
 		deformationSpace_->translate(movement);
 		translationPoint_ += movement;
 		last_point_2d_ = ivec2(xpos, ypos);
@@ -388,12 +351,11 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 
 	currMousePos.normalize();
 	lastPos.normalize();
-	vec3 rotAxis = meshHandle_.compute_rotation_vector();
 
-	if (mouseMotionNorm > 0 && norm(rotAxis) > 0)
+	if (mouseMotionNorm > 0)
 	{
 		float angle = (atan2(lastPos[1], lastPos[0]) - atan2(currMousePos[1], currMousePos[0])) * 180.0f / M_PI;
-		deformationSpace_->rotate(normalize(rotAxis), angle);
+		deformationSpace_->rotate(translationNormal_, angle);
 		last_point_2d_ = ivec2(xpos, ypos);
 		meshIsDirty_ = true;
 	}
@@ -442,4 +404,58 @@ Ray VertexSelectionViewer::get_ray(int x, int y)
 
 	return { vec3(origin[0], origin[1], origin[2]), normalize(vec3(dir[0], dir[1], dir[2])) };
 
+}
+
+void VertexSelectionViewer::init_modifier()
+{
+	auto points = mesh_.get_vertex_property<Point>("v:point");
+	auto colors = mesh_.get_vertex_property<Color>("v:col");
+	std::vector<Vertex> supportVertices;
+	std::vector<Vertex> handleVertices;
+	pmp::Normal normal(0, 0, 0);
+	pmp::Point handlePoint(0, 0, 0);
+	int pointIndex = 0;
+
+	for (Vertex v : mesh_.vertices())
+	{
+		if (colors[v] == Color(0, 1, 0))
+		{
+			handleVertices.push_back(v);
+			normal += SurfaceNormals::compute_vertex_normal(mesh_, v);
+			handlePoint += points[v];
+			pointIndex++;
+		}
+		else if (colors[v] == Color(0, 0, 1))
+		{
+			supportVertices.push_back(v);
+		}
+	}
+
+	translationPoint_ = handlePoint / pointIndex;
+	normal.normalize();
+	translationNormal_ = normal;
+
+	deformationSpace_->set_regions(supportVertices, handleVertices);
+
+	meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
+	viewerMode_ = ViewerMode::Translation;
+	meshHandle_.set_translationMode();
+	meshIsDirty_ = true;
+}
+
+void VertexSelectionViewer::draw_on_mesh()
+{
+	TrackballViewer::pick(pickPosition_);
+	double x = 0;
+	double y = 0;
+	cursor_pos(x, y);
+	auto vVector = pick_vertex(x, y, brushSize_);
+
+	if (!vVector.empty())
+	{
+		auto vProp = mesh_.get_vertex_property<Color>("v:col");
+		for (auto v : vVector)
+			vProp[v] = COLORS[static_cast<size_t>(vertexDrawingMode_)];
+		meshIsDirty_ = true;
+	}
 }

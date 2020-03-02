@@ -181,9 +181,6 @@ namespace algorithm {
 	{
 		assert(supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size());
 
-		auto areas = mesh_.add_face_property<Scalar>("f:area");
-		for (Face f : mesh_.faces()) areas[f] = triangle_area(mesh_, f);
-
 		// compute weights
 		auto vweights = mesh_.add_vertex_property<Scalar>("v:area");
 		for (Vertex v : mesh_.vertices())

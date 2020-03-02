@@ -30,9 +30,7 @@ void VertexSelectionViewer::do_processing()
 		{
 		case ViewerMode::View:
 			break;
-		case ViewerMode::Translation_X:
-		case ViewerMode::Translation_Y:
-		case ViewerMode::Translation_Z:
+		case ViewerMode::Translation:
 			translationHandle(mousePosX_, mousePosY_);
 			break;
 		case ViewerMode::Rotation:
@@ -127,6 +125,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	case GLFW_KEY_R:
 	{
 		viewerMode_ = ViewerMode::Rotation;
+		meshHandle_.set_rotationMode();
 		break;
 	}
 	case GLFW_KEY_I:
@@ -160,21 +159,21 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		translationNormal_ = normal;
 
 		deformationSpace_->set_regions(supportVertices, handleVertices);
+		meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
+
 		break;
 	}
 	case GLFW_KEY_S:
 	{
 		viewerMode_ = ViewerMode::Scale;
+		meshHandle_.set_scaleMode();
 		break;
 	}
 	case GLFW_KEY_SPACE:
 	{
-		if (viewerMode_ == ViewerMode::View)
-			viewerMode_ = ViewerMode::Translation_Y;
-		else
-			viewerMode_ = ViewerMode::View;
+		viewerMode_ = ViewerMode::Translation;
 
-		meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
+		meshHandle_.set_translationMode();
 		// quick fix to force recompute
 		meshIsDirty_ = true;
 		break;
@@ -241,7 +240,7 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 	mousePosX_ = xpos;
 	mousePosY_ = ypos;
 
-	if(!isVertexTranslationMouseActive_)
+	if (!isVertexTranslationMouseActive_)
 	{
 		TrackballViewer::motion(xpos, ypos);
 	}
@@ -368,9 +367,10 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 	vec2 currMousePos = vec2(xpos, ypos);
 	vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
 	float mouseMotionNorm = pmp::norm(mouseMotion);
-	if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0)
+	vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, mouseMotion);
+
+	if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0 && norm(movement) > 0)
 	{
-		vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, mouseMotion);
 		deformationSpace_->translate(movement);
 		translationPoint_ += movement;
 		last_point_2d_ = ivec2(xpos, ypos);
@@ -388,11 +388,12 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 
 	currMousePos.normalize();
 	lastPos.normalize();
+	vec3 rotAxis = meshHandle_.compute_rotation_vector();
 
-	if (mouseMotionNorm > 0)
+	if (mouseMotionNorm > 0 && norm(rotAxis) > 0)
 	{
 		float angle = (atan2(lastPos[1], lastPos[0]) - atan2(currMousePos[1], currMousePos[0])) * 180.0f / M_PI;
-		deformationSpace_->rotate(translationNormal_, angle);
+		deformationSpace_->rotate(normalize(rotAxis), angle);
 		last_point_2d_ = ivec2(xpos, ypos);
 		meshIsDirty_ = true;
 	}

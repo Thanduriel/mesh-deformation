@@ -18,7 +18,13 @@ enum class EMode
 	None,
 	Translation_X,
 	Translation_Y,
-	Translation_Z
+	Translation_Z,
+	Rotation_X,
+	Rotation_Y,
+	Rotation_Z,
+	Scale_X,
+	Scale_Y,
+	Scale_Z
 };
 
 
@@ -31,8 +37,16 @@ public:
 
 	void set_scale(const vec3 scale);
 	void set_origin(const vec3& origin, const vec3& normal);
+	void set_translationMode();
+	void set_rotationMode();
+	void set_scaleMode();
+
+	bool is_translationMode();
+	bool is_rotationMode();
+	bool is_scaleMode();
 
 	vec3 compute_move_vector(const mat4& modelviewProjection, vec2 motion);
+	vec3 compute_rotation_vector();
 	void init_local_coordinate_system(mat4 modelview, vec3 normal);
 
 	bool is_hit(const Ray& ray);
@@ -41,13 +55,16 @@ private:
 	void precompute_intersection_structure(SurfaceColorMesh& mesh);
 	
 	void precompute_modelViewMatrix();
-	mat4 compute_modelViewMatrix(vec3 forward);
+	mat4 compute_modelViewMatrix(vec3 forward, mat4 scaleMatrix);
 
 	bool is_hit(const Ray& ray, mat4 modelMatrixInverse,const SurfaceColorMesh& mesh) const;
 
 	SurfaceColorMesh arrowMesh_LocalX_;
 	SurfaceColorMesh arrowMesh_LocalY_;
 	SurfaceColorMesh arrowMesh_LocalZ_;
+	SurfaceColorMesh torusMesh_RotationX_;
+	SurfaceColorMesh torusMesh_RotationY_;
+	SurfaceColorMesh torusMesh_RotationZ_;
 
 	vec3 origin_;
 	mat4 modelMatrixX_;
@@ -56,7 +73,16 @@ private:
 	mat4 modelMatrixInverseY_;
 	mat4 modelMatrixZ_;
 	mat4 modelMatrixInverseZ_;
-	mat4 scaleMatrix_;
+	mat4 modelMatrixRotationX_;
+	mat4 modelMatrixInverseRotationX_;
+	mat4 modelMatrixRotationY_;
+	mat4 modelMatrixInverseRotationY_;
+	mat4 modelMatrixRotationZ_;
+	mat4 modelMatrixInverseRotationZ_;
+
+	mat4 scaleMatrixArrow_;
+	mat4 scaleMatrixTorus_;
+
 	vec3 local_x_;
 	vec3 local_y_;
 	vec3 local_z_;

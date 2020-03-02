@@ -11,9 +11,7 @@ namespace algorithm {
 enum class ViewerMode
 {
 	View,
-	Translation_X,
-	Translation_Y,
-	Translation_Z,
+	Translation,
 	Rotation,
 	Scale
 };
@@ -22,22 +20,16 @@ inline std::string operator+(std::string os, ViewerMode c)
 {
 	switch (c)
 	{
-	case ViewerMode::View: 
+	case ViewerMode::View:
 		os += "View";
 		break;
-	case ViewerMode::Translation_X: 
-		os += "Translation_X";
+	case ViewerMode::Translation:
+		os += "Translation";
 		break;
-	case ViewerMode::Translation_Y: 
-		os += "Translation_Y";
-		break;
-	case ViewerMode::Translation_Z: 
-		os += "Translation_Z";
-		break;
-	case ViewerMode::Scale: 
+	case ViewerMode::Scale:
 		os += "Scale";
 		break;
-	case ViewerMode::Rotation: 
+	case ViewerMode::Rotation:
 		os += "Rotation";
 		break;
 	default:

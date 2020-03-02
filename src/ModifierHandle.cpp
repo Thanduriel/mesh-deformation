@@ -3,7 +3,7 @@
 #include <iostream>
 
 ModifierHandle::ModifierHandle()
-	: scaleMatrix_(scaling_matrix(1.f))
+	: scaleMatrixArrow_(scaling_matrix(1.f)), scaleMatrixTorus_(scaling_matrix(0.13f))
 {
 	arrowMesh_LocalX_.read("../models/arrow.off");
 	arrowMesh_LocalX_.update_opengl_buffers();
@@ -13,6 +13,15 @@ ModifierHandle::ModifierHandle()
 
 	arrowMesh_LocalZ_.read("../models/arrow.off");
 	arrowMesh_LocalZ_.update_opengl_buffers();
+
+	torusMesh_RotationX_.read("../models/torus.obj");
+	torusMesh_RotationX_.update_opengl_buffers();
+
+	torusMesh_RotationY_.read("../models/torus.obj");
+	torusMesh_RotationY_.update_opengl_buffers();
+
+	torusMesh_RotationZ_.read("../models/torus.obj");
+	torusMesh_RotationZ_.update_opengl_buffers();
 
 	precompute_modelViewMatrix();
 	precompute_intersection_structure();
@@ -24,14 +33,58 @@ ModifierHandle::~ModifierHandle()
 
 void ModifierHandle::draw(const mat4& projection_matrix, const mat4& view_matrix)
 {
-	arrowMesh_LocalX_.draw(projection_matrix, view_matrix * modelMatrixX_, "Smooth Shading");
-	arrowMesh_LocalY_.draw(projection_matrix, view_matrix * modelMatrixY_, "Smooth Shading");
-	arrowMesh_LocalZ_.draw(projection_matrix, view_matrix * modelMatrixZ_, "Smooth Shading");
+	if (is_translationMode())
+	{
+		arrowMesh_LocalX_.draw(projection_matrix, view_matrix * modelMatrixX_, "Smooth Shading");
+		arrowMesh_LocalY_.draw(projection_matrix, view_matrix * modelMatrixY_, "Smooth Shading");
+		arrowMesh_LocalZ_.draw(projection_matrix, view_matrix * modelMatrixZ_, "Smooth Shading");
+	}
+	if (is_rotationMode())
+	{
+		torusMesh_RotationX_.draw(projection_matrix, view_matrix * modelMatrixRotationX_, "Smooth Shading");
+		torusMesh_RotationY_.draw(projection_matrix, view_matrix * modelMatrixRotationY_, "Smooth Shading");
+		torusMesh_RotationZ_.draw(projection_matrix, view_matrix * modelMatrixRotationZ_, "Smooth Shading");
+	}
 }
 
 void ModifierHandle::set_scale(const vec3 scale)
 {
-	scaleMatrix_ = scaling_matrix(scale);
+	scaleMatrixArrow_ = scaling_matrix(scale);
+}
+
+bool ModifierHandle::is_translationMode()
+{
+	switch (mode_)
+	{
+	case EMode::Translation_X:
+	case EMode::Translation_Y:
+	case EMode::Translation_Z:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
+bool ModifierHandle::is_rotationMode()
+{
+	switch (mode_)
+	{
+	case EMode::Rotation_X:
+	case EMode::Rotation_Y:
+	case EMode::Rotation_Z:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
+bool ModifierHandle::is_scaleMode()
+{
+	return false;
 }
 
 vec3 ModifierHandle::compute_move_vector(const mat4& modelviewProjection, vec2 motion)
@@ -43,18 +96,27 @@ vec3 ModifierHandle::compute_move_vector(const mat4& modelviewProjection, vec2 m
 		moveAxis = local_y_;
 	else if (mode_ == EMode::Translation_Z)
 		moveAxis = local_z_;
+	else
+		return vec3(0, 0, 0);
 
-	if (mode_ != EMode::None)
-	{
-		vec4 t = modelviewProjection * vec4(moveAxis, 1.0f);
-		vec2 tVec2 = vec2(t[0], -t[1]);
-		tVec2.normalize();
+	vec4 t = modelviewProjection * vec4(moveAxis, 1.0f);
+	vec2 tVec2 = vec2(t[0], -t[1]);
+	tVec2.normalize();
 
-		float scalar = pmp::dot(motion, tVec2);
-		vec3 movement = moveAxis * scalar * 0.001f;
+	float scalar = pmp::dot(motion, tVec2);
+	vec3 movement = moveAxis * scalar * 0.001f;
 
-		return movement;
-	}
+	return movement;
+}
+
+vec3 ModifierHandle::compute_rotation_vector()
+{
+	if (mode_ == EMode::Rotation_X)
+		return normalize(local_x_);
+	else if (mode_ == EMode::Rotation_Y)
+		return normalize(local_y_);
+	else if (mode_ == EMode::Rotation_Z)
+		return normalize(local_z_);
 	else
 		return vec3(0, 0, 0);
 }
@@ -75,48 +137,106 @@ void ModifierHandle::set_origin(const vec3& origin, const vec3& normal)
 	precompute_modelViewMatrix();
 }
 
+void ModifierHandle::set_translationMode()
+{
+	switch (mode_)
+	{
+	case EMode::Translation_X:
+	case EMode::Translation_Y:
+	case EMode::Translation_Z:
+		break;
+	default:
+		mode_ = EMode::Translation_X;
+	}
+}
+
+void ModifierHandle::set_rotationMode()
+{
+	switch (mode_)
+	{
+	case EMode::Rotation_X:
+	case EMode::Rotation_Y:
+	case EMode::Rotation_Z:
+		break;
+	default:
+		mode_ = EMode::Rotation_X;
+	}
+}
+
+void ModifierHandle::set_scaleMode()
+{
+}
+
 bool ModifierHandle::is_hit(const Ray& ray)
 {
-	if (is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_))
+	if (is_translationMode())
 	{
-		mode_ = EMode::Translation_X;
-		return true;
+		if (is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_))
+		{
+			mode_ = EMode::Translation_X;
+			return true;
+		}
+		else if (is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_))
+		{
+			mode_ = EMode::Translation_Y;
+			return true;
+		}
+		else if (is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_))
+		{
+			mode_ = EMode::Translation_Z;
+			return true;
+		}
 	}
-	else if (is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_))
+	else if (is_rotationMode())
 	{
-		mode_ = EMode::Translation_Y;
-		return true;
+		if (is_hit(ray, modelMatrixInverseRotationX_, torusMesh_RotationX_))
+		{
+			mode_ = EMode::Rotation_X;
+			return true;
+		}
+		else if (is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_))
+		{
+			mode_ = EMode::Rotation_Y;
+			return true;
+		}
+		else if (is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_))
+		{
+			mode_ = EMode::Rotation_Z;
+			return true;
+		}
 	}
-	else if (is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_))
-	{
-		mode_ = EMode::Translation_Z;
-		return true;
-	}
-	else
-	{
-		mode_ = EMode::None;
-		return false;
-	}
+
+
+	return false;
 }
 
 void ModifierHandle::precompute_modelViewMatrix()
 {
-	modelMatrixX_ = compute_modelViewMatrix(local_x_);
+	modelMatrixX_ = compute_modelViewMatrix(local_x_, scaleMatrixArrow_);
 	modelMatrixInverseX_ = inverse(modelMatrixX_);
 
-	modelMatrixY_ = compute_modelViewMatrix(local_y_);
+	modelMatrixY_ = compute_modelViewMatrix(local_y_, scaleMatrixArrow_);
 	modelMatrixInverseY_ = inverse(modelMatrixY_);
 
-	modelMatrixZ_ = compute_modelViewMatrix(local_z_);
+	modelMatrixZ_ = compute_modelViewMatrix(local_z_, scaleMatrixArrow_);
 	modelMatrixInverseZ_ = inverse(modelMatrixZ_);
+
+	modelMatrixRotationX_ = compute_modelViewMatrix(local_x_, scaleMatrixTorus_);
+	modelMatrixInverseRotationX_ = inverse(modelMatrixRotationX_);
+
+	modelMatrixRotationY_ = compute_modelViewMatrix(local_y_, scaleMatrixTorus_);
+	modelMatrixInverseRotationY_ = inverse(modelMatrixRotationY_);
+
+	modelMatrixRotationZ_ = compute_modelViewMatrix(local_z_, scaleMatrixTorus_);
+	modelMatrixInverseRotationZ_ = inverse(modelMatrixRotationZ_);
 }
 
-mat4 ModifierHandle::compute_modelViewMatrix(vec3 forward)
+mat4 ModifierHandle::compute_modelViewMatrix(vec3 forward, mat4 scaleMatrix)
 {
 	const vec3 forwardN = normalize(forward);
 	const vec3 defForward(0.f, 0.f, 1.f);
 	const float angle = acos(dot(forwardN, defForward)) * 360.f / (2.f * 3.1415f);
-	return translation_matrix(origin_) * transpose(rotation_matrix(cross(forwardN, defForward), angle)) * scaleMatrix_;
+	return translation_matrix(origin_) * transpose(rotation_matrix(cross(forwardN, defForward), angle)) * scaleMatrix;
 }
 
 bool ModifierHandle::is_hit(const Ray& ray, mat4 modelMatrixInverse, const SurfaceColorMesh& mesh) const
@@ -145,6 +265,9 @@ void ModifierHandle::precompute_intersection_structure()
 	precompute_intersection_structure(arrowMesh_LocalX_);
 	precompute_intersection_structure(arrowMesh_LocalY_);
 	precompute_intersection_structure(arrowMesh_LocalZ_);
+	precompute_intersection_structure(torusMesh_RotationX_);
+	precompute_intersection_structure(torusMesh_RotationY_);
+	precompute_intersection_structure(torusMesh_RotationZ_);
 }
 
 void ModifierHandle::precompute_intersection_structure(SurfaceColorMesh& mesh)

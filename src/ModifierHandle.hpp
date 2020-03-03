@@ -47,6 +47,7 @@ public:
 
 	vec3 compute_move_vector(const mat4& modelviewProjection, vec2 motion);
 	vec3 compute_rotation_vector();
+
 	void init_local_coordinate_system(mat4 modelview, vec3 normal);
 
 	bool is_hit(const Ray& ray);
@@ -65,6 +66,9 @@ private:
 	SurfaceColorMesh torusMesh_RotationX_;
 	SurfaceColorMesh torusMesh_RotationY_;
 	SurfaceColorMesh torusMesh_RotationZ_;
+	SurfaceColorMesh scaleMesh_ScaleX_;
+	SurfaceColorMesh scaleMesh_ScaleY_;
+	SurfaceColorMesh scaleMesh_ScaleZ_;
 
 	vec3 origin_;
 	mat4 modelMatrixX_;
@@ -79,9 +83,16 @@ private:
 	mat4 modelMatrixInverseRotationY_;
 	mat4 modelMatrixRotationZ_;
 	mat4 modelMatrixInverseRotationZ_;
+	mat4 modelMatrixScaleX_;
+	mat4 modelMatrixScaleInverseX_;
+	mat4 modelMatrixScaleY_;
+	mat4 modelMatrixScaleInverseY_;
+	mat4 modelMatrixScaleZ_;
+	mat4 modelMatrixScaleInverseZ_;
 
 	mat4 scaleMatrixArrow_;
 	mat4 scaleMatrixTorus_;
+	mat4 scaleMatrixScale_;
 
 	vec3 local_x_;
 	vec3 local_y_;

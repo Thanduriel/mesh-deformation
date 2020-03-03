@@ -3,7 +3,7 @@
 #include <iostream>
 
 ModifierHandle::ModifierHandle()
-	: scaleMatrixArrow_(scaling_matrix(1.f)), scaleMatrixTorus_(scaling_matrix(0.13f))
+	: scaleMatrixArrow_(scaling_matrix(1.f)), scaleMatrixTorus_(scaling_matrix(0.13f)), scaleMatrixScale_(scaling_matrix(0.01f))
 {
 	arrowMesh_LocalX_.read("../models/arrow.off");
 	arrowMesh_LocalX_.update_opengl_buffers();
@@ -22,6 +22,15 @@ ModifierHandle::ModifierHandle()
 
 	torusMesh_RotationZ_.read("../models/torus.obj");
 	torusMesh_RotationZ_.update_opengl_buffers();
+
+	scaleMesh_ScaleX_.read("../models/arrow.off");
+	scaleMesh_ScaleX_.update_opengl_buffers();
+
+	scaleMesh_ScaleY_.read("../models/arrow.off");
+	scaleMesh_ScaleY_.update_opengl_buffers();
+
+	scaleMesh_ScaleZ_.read("../models/arrow.off");
+	scaleMesh_ScaleZ_.update_opengl_buffers();
 
 	precompute_modelViewMatrix();
 	precompute_intersection_structure();
@@ -44,6 +53,12 @@ void ModifierHandle::draw(const mat4& projection_matrix, const mat4& view_matrix
 		torusMesh_RotationX_.draw(projection_matrix, view_matrix * modelMatrixRotationX_, "Smooth Shading");
 		torusMesh_RotationY_.draw(projection_matrix, view_matrix * modelMatrixRotationY_, "Smooth Shading");
 		torusMesh_RotationZ_.draw(projection_matrix, view_matrix * modelMatrixRotationZ_, "Smooth Shading");
+	}
+	if (is_scaleMode())
+	{
+		scaleMesh_ScaleX_.draw(projection_matrix, view_matrix * modelMatrixScaleX_, "Smooth Shading");
+		scaleMesh_ScaleY_.draw(projection_matrix, view_matrix * modelMatrixScaleY_, "Smooth Shading");
+		scaleMesh_ScaleZ_.draw(projection_matrix, view_matrix * modelMatrixScaleZ_, "Smooth Shading");
 	}
 }
 
@@ -84,6 +99,16 @@ bool ModifierHandle::is_rotationMode()
 
 bool ModifierHandle::is_scaleMode()
 {
+	switch (mode_)
+	{
+	case EMode::Scale_X:
+	case EMode::Scale_Y:
+	case EMode::Scale_Z:
+		return true;
+	default:
+		break;
+	}
+
 	return false;
 }
 
@@ -165,6 +190,15 @@ void ModifierHandle::set_rotationMode()
 
 void ModifierHandle::set_scaleMode()
 {
+	switch (mode_)
+	{
+	case EMode::Scale_X:
+	case EMode::Scale_Y:
+	case EMode::Scale_Z:
+		break;
+	default:
+		mode_ = EMode::Scale_X;
+	}
 }
 
 bool ModifierHandle::is_hit(const Ray& ray)
@@ -205,6 +239,24 @@ bool ModifierHandle::is_hit(const Ray& ray)
 			return true;
 		}
 	}
+	else if (is_scaleMode())
+	{
+		if (is_hit(ray, modelMatrixScaleInverseX_, scaleMesh_ScaleX_))
+		{
+			mode_ = EMode::Scale_X;
+			return true;
+		}
+		else if (is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_))
+		{
+			mode_ = EMode::Scale_Y;
+			return true;
+		}
+		else if (is_hit(ray, modelMatrixScaleInverseZ_, scaleMesh_ScaleZ_))
+		{
+			mode_ = EMode::Scale_Z;
+			return true;
+		}
+	}
 
 
 	return false;
@@ -229,6 +281,15 @@ void ModifierHandle::precompute_modelViewMatrix()
 
 	modelMatrixRotationZ_ = compute_modelViewMatrix(local_z_, scaleMatrixTorus_);
 	modelMatrixInverseRotationZ_ = inverse(modelMatrixRotationZ_);
+
+	modelMatrixScaleX_ = compute_modelViewMatrix(local_x_, scaleMatrixScale_);
+	modelMatrixScaleInverseX_ = inverse(modelMatrixScaleX_);
+
+	modelMatrixScaleY_ = compute_modelViewMatrix(local_y_, scaleMatrixScale_);
+	modelMatrixScaleInverseY_ = inverse(modelMatrixScaleY_);
+
+	modelMatrixScaleZ_ = compute_modelViewMatrix(local_z_, scaleMatrixScale_);
+	modelMatrixScaleInverseZ_ = inverse(modelMatrixScaleZ_);
 }
 
 mat4 ModifierHandle::compute_modelViewMatrix(vec3 forward, mat4 scaleMatrix)
@@ -268,6 +329,9 @@ void ModifierHandle::precompute_intersection_structure()
 	precompute_intersection_structure(torusMesh_RotationX_);
 	precompute_intersection_structure(torusMesh_RotationY_);
 	precompute_intersection_structure(torusMesh_RotationZ_);
+	precompute_intersection_structure(scaleMesh_ScaleX_);
+	precompute_intersection_structure(scaleMesh_ScaleY_);
+	precompute_intersection_structure(scaleMesh_ScaleZ_);
 }
 
 void ModifierHandle::precompute_intersection_structure(SurfaceColorMesh& mesh)

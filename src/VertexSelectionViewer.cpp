@@ -125,6 +125,9 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			return;
 		case GLFW_KEY_SPACE:
 			viewerMode_ = ViewerMode::View;
+			return;
+		case GLFW_KEY_T:
+			viewerMode_ = ViewerMode::Translation;
 			meshHandle_.set_translationMode();
 			return;
 		}

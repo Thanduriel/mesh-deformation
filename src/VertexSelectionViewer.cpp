@@ -102,6 +102,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		case GLFW_KEY_SPACE:
 			viewerMode_ = ViewerMode::Translation;
 			vertexDrawingMode_ = VertexDrawingMode::None;
+			meshHandle_.set_translationMode();
 			init_modifier();
 			return;
 		}
@@ -112,6 +113,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		{
 		case GLFW_KEY_R:
 			viewerMode_ = ViewerMode::Rotation;
+			meshHandle_.set_rotationMode();
 			return;
 		case GLFW_KEY_3:
 			deformationSpace_->set_area_scaling(!deformationSpace_->get_area_scaling());
@@ -119,9 +121,11 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			return;
 		case GLFW_KEY_S:
 			viewerMode_ = ViewerMode::Scale;
+			meshHandle_.set_scaleMode();
 			return;
 		case GLFW_KEY_SPACE:
 			viewerMode_ = ViewerMode::View;
+			meshHandle_.set_translationMode();
 			return;
 		}
 	}
@@ -145,7 +149,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		if (key != GLFW_KEY_Q)
 			TrackballViewer::keyboard(key, scancode, action, mods);
 	}
-		
+
 }
 
 bool VertexSelectionViewer::load_mesh(const char* filename)
@@ -196,7 +200,7 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 	mousePosX_ = xpos;
 	mousePosY_ = ypos;
 
-	if(!isVertexTranslationMouseActive_)
+	if (!isVertexTranslationMouseActive_)
 	{
 		if (vertexDrawingMode_ == VertexDrawingMode::None)
 			TrackballViewer::motion(xpos, ypos);
@@ -355,7 +359,7 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 	if (mouseMotionNorm > 0)
 	{
 		float angle = (atan2(lastPos[1], lastPos[0]) - atan2(currMousePos[1], currMousePos[0])) * 180.0f / M_PI;
-		deformationSpace_->rotate(translationNormal_, angle);
+		deformationSpace_->rotate(meshHandle_.compute_rotation_vector(), angle);
 		last_point_2d_ = ivec2(xpos, ypos);
 		meshIsDirty_ = true;
 	}

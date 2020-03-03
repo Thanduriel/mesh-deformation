@@ -23,13 +23,13 @@ ModifierHandle::ModifierHandle()
 	torusMesh_RotationZ_.read("../models/torus.obj");
 	torusMesh_RotationZ_.update_opengl_buffers();
 
-	scaleMesh_ScaleX_.read("../models/arrow.off");
+	scaleMesh_ScaleX_.read("../models/scaleMesh.off");
 	scaleMesh_ScaleX_.update_opengl_buffers();
 
-	scaleMesh_ScaleY_.read("../models/arrow.off");
+	scaleMesh_ScaleY_.read("../models/scaleMesh.off");
 	scaleMesh_ScaleY_.update_opengl_buffers();
 
-	scaleMesh_ScaleZ_.read("../models/arrow.off");
+	scaleMesh_ScaleZ_.read("../models/scaleMesh.off");
 	scaleMesh_ScaleZ_.update_opengl_buffers();
 
 	precompute_modelViewMatrix();
@@ -144,6 +144,11 @@ vec3 ModifierHandle::compute_rotation_vector()
 		return normalize(local_z_);
 	else
 		return vec3(0, 0, 0);
+}
+
+vec3 ModifierHandle::origin()
+{
+	return origin_;
 }
 
 void ModifierHandle::init_local_coordinate_system(mat4 modelview, vec3 normal)

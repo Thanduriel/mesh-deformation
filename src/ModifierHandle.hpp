@@ -47,6 +47,7 @@ public:
 
 	vec3 compute_move_vector(const mat4& modelviewProjection, vec2 motion);
 	vec3 compute_rotation_vector();
+	vec3 origin();
 
 	void init_local_coordinate_system(mat4 modelview, vec3 normal);
 

@@ -363,7 +363,14 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 
 void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 {
-	vec2 midScreen = vec2(width() / 2.0f, height() / 2.0f);
+	vec4 t = projection_matrix_ * modelview_matrix_ * vec4(meshHandle_.origin(), 1.0f);
+	t /= t[3];
+	vec2 tVec2 = vec2(t[0], -t[1]);
+	tVec2 += vec2(1, 1);
+	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
+	std::cout << tVec2 << std::endl;
+	std::cout << "Mouse " << xpos << ":" << ypos << std::endl;
+	vec2 midScreen = tVec2;
 	vec2 currMousePos = vec2(xpos, ypos) - midScreen;
 	vec2 lastPos = vec2(last_point_2d_[0], last_point_2d_[1]) - midScreen;
 	vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
@@ -374,7 +381,9 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 
 	if (mouseMotionNorm > 0)
 	{
-		float angle = (atan2(lastPos[1], lastPos[0]) - atan2(currMousePos[1], currMousePos[0])) * 180.0f / M_PI;
+		float angle = (atan2(lastPos[1], lastPos[0]) - atan2(currMousePos[1], currMousePos[0]));
+		angle *= 180.0f / M_PI;
+
 		deformationSpace_->rotate(meshHandle_.compute_rotation_vector(), angle);
 		last_point_2d_ = ivec2(xpos, ypos);
 		meshIsDirty_ = true;

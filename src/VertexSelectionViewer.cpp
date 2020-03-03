@@ -276,13 +276,26 @@ void VertexSelectionViewer::process_imgui()
 {
 	if (ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		if (ImGui::CollapsingHeader("Help", ImGuiTreeNodeFlags_None))
+		constexpr const char* VERTEX_DRAW_NAMES[] = { "View [R]", "Clear [E]", "Handle [Q]", "Support [W]" };
+		static const char* currentItem = VERTEX_DRAW_NAMES[0];
+		// display possible changes from hotkeys
+		currentItem = VERTEX_DRAW_NAMES[static_cast<size_t>(vertexDrawingMode_)];
+		if (ImGui::BeginCombo("draw mode", currentItem))
 		{
-			ImGui::BulletText("Space: Activate Modifier");
-			ImGui::BulletText("Q: Draw handle region");
-			ImGui::BulletText("W: Draw support region");
-			ImGui::BulletText("E: Draw default region");
+			for (int i = 0; i < 4; ++i)
+			{
+				const bool isSelected = currentItem == VERTEX_DRAW_NAMES[i];
+				if (ImGui::Selectable(VERTEX_DRAW_NAMES[i], isSelected))
+				{
+					currentItem = VERTEX_DRAW_NAMES[i];
+					vertexDrawingMode_ = static_cast<VertexDrawingMode>(i);
+				}
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
 		}
+
 		if (viewerMode_ != ViewerMode::View)
 		{
 			ImGui::BulletText("X: Select local x-axis");
@@ -292,7 +305,7 @@ void VertexSelectionViewer::process_imgui()
 			ImGui::Text(("Current ViewMode " + viewerMode_).c_str());
 		}
 		const BoundingBox bb = mesh_.bounds();
-		ImGui::SliderFloat("BrushSize", &brushSize_, 0.01, bb.size() * 0.5);
+		ImGui::SliderFloat("brush size", &brushSize_, 0.01, bb.size() * 0.5);
 	}
 	if (deformationSpace_->is_set() && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
 	{

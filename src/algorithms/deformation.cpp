@@ -1,13 +1,13 @@
 #include "deformation.hpp"
 #include <pmp/algorithms/DifferentialGeometry.h>
 #include <chrono>
+#include <Eigen/Dense>
 
 namespace algorithm {
 
 	using namespace pmp;
 
 	using Triplet = Eigen::Triplet<double>;
-	using DenseMatrix = Eigen::MatrixXd;
 	//Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::AutoAlign | Eigen::RowMajor>;
 
 	Deformation::Deformation(SurfaceMesh& mesh)
@@ -87,9 +87,10 @@ namespace algorithm {
 		compute_higher_order();
 		update_support_region();
 	}
-
+	static double temp = 0.0;
 	void Deformation::translate(const pmp::Normal& translation)
 	{
+		temp = translation[0] + translation[1] + translation[2] + 1.0;
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 		for (Vertex v : handleVertices_) points[v] += translation;
 		update_support_region();
@@ -133,43 +134,52 @@ namespace algorithm {
 	{
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 
-		const std::size_t numFree = supportVertices_.size();
-		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
-
-		// build right side B
-		DenseMatrix x2(numFixed, 3);
-		for (Vertex v : handleVertices_)
+		DenseMatrix X;
+		if (useBasisFunctions_)
 		{
-			const int i = idx_[v] - numFree;
-			const Point p = points[v];
-			x2(i, 0) = p[0];
-			x2(i, 1) = p[1];
-			x2(i, 2) = p[2];
+			Eigen::Matrix4d frame;
+			for (size_t i = 0; i < 4; ++i)
+			{
+				const Point p = points[handleVertices_[i]];
+				frame(i, 0) = p[0];
+				frame(i, 1) = p[1];
+				frame(i, 2) = p[2];
+				frame(i, 3) = 1.0;
+			}
+
+			X = boundarySolution_ + handleBasis_ * frame;
 		}
-		for (Vertex v : boundaryVertices_)
+		else
 		{
-			const int i = idx_[v] - numFree;
-			const Point p = points[v];
-			x2(i, 0) = p[0];
-			x2(i, 1) = p[1];
-			x2(i, 2) = p[2];
+			const std::size_t numFree = supportVertices_.size();
+			const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
+
+			DenseMatrix x2 = DenseMatrix::Zero(numFixed, 3);
+			for (Vertex v : handleVertices_)
+			{
+				const int i = idx_[v] - numFree;
+				const Point p = points[v];
+				x2(i, 0) = p[0];
+				x2(i, 1) = p[1];
+				x2(i, 2) = p[2];
+			}
+
+			const DenseMatrix B1 = -laplace2_ * x2;
+			X = boundarySolution_ + solver_.solve(B1);
 		}
 
-		const DenseMatrix B = /*areaScale_ **/ -laplace2_ * x2;
-		
-		auto begin = std::chrono::high_resolution_clock::now();
-		const DenseMatrix X = solver_.solve(B);
-		auto end = std::chrono::high_resolution_clock::now();
+	//	const DenseMatrix X = X1 + X2;
+	//	std::cout << X2.norm() << " | " << X1.norm();
 	//	std::cout << std::chrono::duration<double>(end - begin).count() << "\n";
 		
-		if (solver_.info() != Eigen::Success)
+	/*	if (solver_.info() != Eigen::Success)
 		{
 			std::cerr << "Deformation: Could not solve linear system\n";
 			throw 42;
-		}
+		}*/
 
 		// apply result
-		for (size_t i = 0; i < numFree; ++i)
+		for (size_t i = 0; i < supportVertices_.size(); ++i)
 		{
 			points[supportVertices_[i]][0] = X(i, 0);
 			points[supportVertices_[i]][1] = X(i, 1);
@@ -264,6 +274,42 @@ namespace algorithm {
 		solver_.compute(laplace1_);
 		auto end = std::chrono::high_resolution_clock::now();
 	//	std::cout << "decomposition:" << std::chrono::duration<double>(end - begin).count() << "\n";
+
+		// precomputed basis functions
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+
+		useBasisFunctions_ = compute_affine_frame();
+		if (useBasisFunctions_)
+		{
+			std::cout << "Using precomputed basis functions.\n";
+			useBasisFunctions_ = true;
+
+			DenseMatrix x2 = DenseMatrix::Zero(numFixed, 4);
+			for (Vertex v : handleVertices_)
+			{
+				const int i = idx_[v] - numFree;
+				x2(i, 0) = affineFrame_(i, 0);
+				x2(i, 1) = affineFrame_(i, 1);
+				x2(i, 2) = affineFrame_(i, 2);
+				x2(i, 3) = affineFrame_(i, 3);
+			}
+
+			const DenseMatrix B1 = -laplace2_ * x2;
+			handleBasis_ = solver_.solve(B1);
+		}
+		DenseMatrix x3 = DenseMatrix::Zero(numFixed, 3);
+		for (Vertex v : boundaryVertices_)
+		{
+			const int i = idx_[v] - numFree;
+			const Point p = points[v];
+			x3(i, 0) = p[0];
+			x3(i, 1) = p[1];
+			x3(i, 2) = p[2];
+		}
+
+		const DenseMatrix B2 = -laplace2_ * x3;
+	
+		boundarySolution_	= solver_.solve(B2);
 	}
 
 	void Deformation::compute_boundary_set(int ringSize)
@@ -298,5 +344,39 @@ namespace algorithm {
 	bool Deformation::is_set() const
 	{
 		return supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size();
+	}
+
+	bool Deformation::compute_affine_frame()
+	{
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+
+		Eigen::Matrix4d frame(4, 4);
+		for (size_t i = 0; i < 4; ++i)
+		{
+			const Point p = points[handleVertices_[i]];
+			frame(i, 0) = p[0];
+			frame(i, 1) = p[1];
+			frame(i, 2) = p[2];
+			frame(i, 3) = 1;
+		}
+		DenseMatrix h(handleVertices_.size(), 4);
+		for (size_t i = 0; i < handleVertices_.size(); ++i)
+		{
+			const Point p = points[handleVertices_[i]];
+			h(i, 0) = p[0];
+			h(i, 1) = p[1];
+			h(i, 2) = p[2];
+			h(i, 3) = 1;
+		}
+
+		Eigen::ColPivHouseholderQR<DenseMatrix> solver(frame.transpose());
+		//	auto solver = frame.transpose().bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+		const DenseMatrix Q = solver.solve(h.transpose()).transpose();
+		//const DenseMatrix Q = h * frame.inverse();
+		if ((Q * frame - h).norm() > 0.001) return false;
+
+		affineFrame_ = Q;
+		return true;
 	}
 }

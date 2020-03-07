@@ -33,6 +33,8 @@ namespace algorithm {
 		void compute_laplace();
 		void compute_higher_order();
 		void compute_boundary_set(int ringSize);
+		// returns success
+		bool compute_affine_frame();
 
 		enum struct VertexType { None, Support, Handle, Boundary };
 
@@ -48,9 +50,14 @@ namespace algorithm {
 
 		using SparseMatrix = Eigen::SparseMatrix<double>;
 		using SparseMatrixR = Eigen::SparseMatrix<double, Eigen::RowMajor>;
+		using DenseMatrix = Eigen::MatrixXd;
 		SparseMatrixR laplacian_;
 		SparseMatrix laplace1_; // support region
 		SparseMatrix laplace2_; // boundary region 
+		DenseMatrix affineFrame_;
+		bool useBasisFunctions_ = false;
+		DenseMatrix boundarySolution_;
+		DenseMatrix handleBasis_;
 		Eigen::DiagonalMatrix<double, Eigen::Dynamic> areaScale_;
 		Eigen::DiagonalMatrix<double, Eigen::Dynamic> smoothnessScale_;
 		Eigen::SparseLU<SparseMatrix> solver_; // SparseLU, SimplicialLLT, SimplicialLDLT

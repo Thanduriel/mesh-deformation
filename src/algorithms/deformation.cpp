@@ -137,14 +137,13 @@ namespace algorithm {
 		DenseMatrix X;
 		if (useBasisFunctions_)
 		{
-			Eigen::Matrix4d frame;
+			Eigen::Matrix<double, 4, 3> frame;
 			for (size_t i = 0; i < 4; ++i)
 			{
 				const Point p = points[handleVertices_[i]];
 				frame(i, 0) = p[0];
 				frame(i, 1) = p[1];
 				frame(i, 2) = p[2];
-				frame(i, 3) = 1.0;
 			}
 
 			X = boundarySolution_ + handleBasis_ * frame;

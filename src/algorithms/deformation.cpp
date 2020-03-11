@@ -29,6 +29,7 @@ namespace algorithm {
 	{
 		mesh_.remove_vertex_property(typeMarks_);
 		mesh_.remove_vertex_property(idx_);
+		mesh_.remove_vertex_property(meshIdx_);
 		mesh_.remove_vertex_property(smoothness_);
 	}
 
@@ -54,6 +55,12 @@ namespace algorithm {
 
 		compute_laplace();
 		compute_higher_order();
+	}
+
+	void Deformation::reset_regions()
+	{
+		supportVertices_.clear();
+		handleVertices_.clear();
 	}
 
 	void Deformation::set_order(int k)

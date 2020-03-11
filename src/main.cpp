@@ -15,5 +15,6 @@ int main()
 	VertexSelectionViewer window("hello world! Test", 1366, 768);
 	window.load_mesh(meshFile);
 	window.run();
+	
 	return 0;
 }

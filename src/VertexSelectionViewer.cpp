@@ -1,8 +1,8 @@
 #include "VertexSelectionViewer.hpp"
 #include "algorithms/deformation.hpp"
 #include <pmp/algorithms/SurfaceNormals.h>
-#include "utils/validation.hpp"
 #include <array>
+#include <chrono>
 
 using namespace pmp;
 
@@ -125,6 +125,8 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			return;
 		case GLFW_KEY_SPACE:
 			viewerMode_ = ViewerMode::View;
+			deformationSpace_->reset_regions();
+			init_picking();
 			return;
 		case GLFW_KEY_T:
 			viewerMode_ = ViewerMode::Translation;
@@ -181,15 +183,14 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		// print mesh statistic
 		std::cout << "Load " << filename << ": " << mesh_.n_vertices()
 			<< " vertices, " << mesh_.n_faces() << " faces\n";
-		auto vProp = mesh_.get_vertex_property<Color>("v:col");
-		const auto& [face, angle] = util::find_min_angle(mesh_);
-		std::cout << angle << "\n";
-		for (Vertex v : mesh_.vertices(face))
-			vProp[v] = Color(1, 1, 1);
+
 		filename_ = filename;
 
 		// construct modifier
 		deformationSpace_ = std::make_unique<algorithm::Deformation>(mesh_);
+
+		// construct structure for picking
+		init_picking();
 
 		return true;
 	}
@@ -258,20 +259,16 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 	std::vector<Vertex> vVector;
 
 	vec3 p;
-	Scalar d;
 
 	if (TrackballViewer::pick(x, y, p))
 	{
-		Point picked_position(p);
-		for (auto v : mesh_.vertices())
-		{
-			d = distance(mesh_.position(v), picked_position);
-			if (d < radius)
-			{
-				vVector.push_back(v);
-			}
-		}
+		SphereQuery query;
+		query.center_ = p;
+		query.radius_ = radius;
+		queryTree_.traverse(query);
+		vVector = std::move(query.verticesHit);
 	}
+
 	return vVector;
 }
 
@@ -472,6 +469,15 @@ void VertexSelectionViewer::init_modifier()
 	meshIsDirty_ = true;
 }
 
+void VertexSelectionViewer::init_picking()
+{
+	queryTree_.clear();
+
+	auto points = mesh_.get_vertex_property<Point>("v:point");
+	for (Vertex v : mesh_.vertices())
+		queryTree_.insert(points[v], v);
+}
+
 void VertexSelectionViewer::draw_on_mesh()
 {
 	TrackballViewer::pick(pickPosition_);
@@ -487,4 +493,18 @@ void VertexSelectionViewer::draw_on_mesh()
 			vProp[v] = COLORS[static_cast<size_t>(vertexDrawingMode_)];
 		meshIsDirty_ = true;
 	}
+}
+
+bool VertexSelectionViewer::SphereQuery::descend(const pmp::vec3& center, double size) const
+{
+	const double fact = std::sqrt(3) * 2.0;
+	const double d = size * fact + radius_;
+
+	return sqrnorm(center - center_) < d * d;
+}
+
+void VertexSelectionViewer::SphereQuery::process(const pmp::vec3& key, Vertex v)
+{
+	if(sqrnorm(key - center_) < radius_*radius_)
+		verticesHit.push_back(v);
 }

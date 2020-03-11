@@ -16,6 +16,7 @@ namespace algorithm {
 
 		void set_regions(const std::vector<pmp::Vertex>& supportVertices, 
 			const std::vector<pmp::Vertex>& handleVertices);
+		void reset_regions();
 		void set_order(int k);
 		int get_order() const { return laplaceOrder_; }
 		void set_area_scaling(bool active);

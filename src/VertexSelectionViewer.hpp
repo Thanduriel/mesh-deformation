@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include <SurfaceColorMesh.hpp>
 #include "ModifierHandle.hpp"
+#include "utils/octree.hpp"
 #include <memory>
 
 namespace algorithm {
@@ -82,13 +83,26 @@ private:
 	void rotationHandle(float xpos, float ypos);
 	void scaleHandle(float xpos, float ypos);
 	void init_modifier();
+	void init_picking();
 	void draw_on_mesh();
+
+	struct SphereQuery
+	{
+		bool descend(const pmp::vec3& center, double size) const;
+		void process(const pmp::vec3& key, Vertex v);
+
+		pmp::vec3 center_;
+		double radius_;
+		std::vector<Vertex> verticesHit;
+	};
 
 	VertexDrawingMode vertexDrawingMode_ = VertexDrawingMode::None;
 	float brushSize_;
 	int operatorOrder_ = 3;
 	float smoothness_ = 2.f;
 	bool useAreaScaling_ = false;
+	util::SparseOctree<pmp::Vertex, 4> queryTree_;
+
 	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;
 	ViewerMode viewerMode_;

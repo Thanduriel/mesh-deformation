@@ -43,7 +43,7 @@ namespace util {
 			{
 				T* ptr = reinterpret_cast<T*>(buffer);
 				for (int i = 0; i < numElements; ++i)
-					ptr->~T();
+					ptr[i].~T();
 
 				if (next) delete next;
 			}

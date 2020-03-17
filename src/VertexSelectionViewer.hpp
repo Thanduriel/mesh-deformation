@@ -115,7 +115,13 @@ private:
 	ModifierHandle meshHandle_;
 	pmp::vec3 pickPosition_;
 	pmp::Vertex pickVertex_;
-	bool meshIsDirty_ = true;
+
+	enum MeshUpdate
+	{
+		Geometry = 1,
+		VertexColor = 2
+	};
+	unsigned meshIsDirty_ = 0u;
 
 	double mousePosX_ = 0.0;
 	double mousePosY_ = 0.0;

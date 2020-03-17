@@ -71,6 +71,8 @@ public:
 	//! update all opengl buffers for efficient core profile rendering
 	void update_opengl_buffers();
 
+	// update only the color vertex buffer
+	void update_color_buffer();
 private:
 	//! OpenGL buffers
 	GLuint vertex_array_object_;
@@ -96,6 +98,9 @@ private:
 	vec3 front_color_, back_color_;
 	float ambient_, diffuse_, specular_, shininess_, alpha_;
 	bool srgb_;
+	
+	// assignment of vertices in the vertex buffer for faster color updates
+	std::vector<pmp::Vertex> bufferVertices_;
 };
 
 //=============================================================================

@@ -142,7 +142,6 @@ void SurfaceColorMesh::update_opengl_buffers()
 	auto vpos = get_vertex_property<Point>("v:point");
 	auto vtex = get_vertex_property<TexCoord>("v:tex");
 	auto htex = get_halfedge_property<TexCoord>("h:tex");
-	auto vcol = vertex_property<Color>("v:col", Color(1, 0, 0));
 
 	// index array for remapping vertex indices during duplication
 	auto vertex_indices = add_vertex_property<size_t>("v:index");
@@ -150,7 +149,6 @@ void SurfaceColorMesh::update_opengl_buffers()
 	// produce arrays of points, normals, and texcoords
 	// (duplicate vertices to allow for flat shading)
 	std::vector<vec3> positionArray;
-	std::vector<vec3> colorArray;
 	std::vector<vec3> normalArray;
 	std::vector<vec2> texArray;
 
@@ -160,7 +158,8 @@ void SurfaceColorMesh::update_opengl_buffers()
 		// reserve memory
 		positionArray.reserve(3 * n_faces());
 		normalArray.reserve(3 * n_faces());
-		colorArray.reserve(3 * n_faces());
+		bufferVertices_.clear();
+		bufferVertices_.reserve(3 * n_faces());
 		if (htex || vtex)
 			texArray.reserve(3 * n_faces());
 
@@ -210,9 +209,9 @@ void SurfaceColorMesh::update_opengl_buffers()
 				normalArray.push_back((vec3)cornerNormals[i1]);
 				normalArray.push_back((vec3)cornerNormals[i2]);
 
-				colorArray.push_back((vec3)vcol[cornerVertices[i0]]);
-				colorArray.push_back((vec3)vcol[cornerVertices[i1]]);
-				colorArray.push_back((vec3)vcol[cornerVertices[i2]]);
+				bufferVertices_.push_back(cornerVertices[i0]);
+				bufferVertices_.push_back(cornerVertices[i1]);
+				bufferVertices_.push_back(cornerVertices[i2]);
 
 				if (htex)
 				{
@@ -274,15 +273,6 @@ void SurfaceColorMesh::update_opengl_buffers()
 	else
 		have_texcoords_ = false;
 
-	if (!colorArray.empty())
-	{
-		glBindBuffer(GL_ARRAY_BUFFER, vertex_color_buffer_);
-		glBufferData(GL_ARRAY_BUFFER, colorArray.size() * 3 * sizeof(float),
-			colorArray.data(), GL_STATIC_DRAW);
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-		glEnableVertexAttribArray(3);
-	}
-
 	// edge indices
 	if (n_edges())
 	{
@@ -331,4 +321,28 @@ void SurfaceColorMesh::update_opengl_buffers()
 
 	// remove vertex index property again
 	remove_vertex_property(vertex_indices);
+}
+
+void SurfaceColorMesh::update_color_buffer()
+{
+	auto vcol = vertex_property<Color>("v:col", Color(1, 0, 0));
+
+	std::vector<vec3> colorArray;
+
+	if (n_faces())
+	{
+		colorArray.reserve(3 * n_faces());
+		for(Vertex v : bufferVertices_)
+			colorArray.push_back((vec3)vcol[v]);
+
+		glBindVertexArray(vertex_array_object_);
+
+		glBindBuffer(GL_ARRAY_BUFFER, vertex_color_buffer_);
+		glBufferData(GL_ARRAY_BUFFER, colorArray.size() * 3 * sizeof(float),
+			colorArray.data(), GL_STATIC_DRAW);
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+		glEnableVertexAttribArray(3);
+
+		glBindVertexArray(0);
+	}
 }

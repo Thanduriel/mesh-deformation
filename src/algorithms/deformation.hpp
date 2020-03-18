@@ -5,6 +5,7 @@
 #include <pmp/SurfaceMesh.h>
 #include <Eigen/Sparse>
 #include <Eigen/SparseCholesky>
+#include <array>
 
 namespace algorithm {
 
@@ -51,13 +52,14 @@ namespace algorithm {
 		// @return success
 		bool compute_affine_frame();
 
-		enum struct VertexType { None, Support, Handle, Boundary };
-
+		// mesh and modifier regions
 		pmp::SurfaceMesh& mesh_;
 		std::vector<pmp::Vertex> supportVertices_;
 		std::vector<pmp::Vertex> handleVertices_;
 		std::vector<pmp::Vertex> boundaryVertices_;
 		
+		// additional vertex properties
+		enum struct VertexType { None, Support, Handle, Boundary };
 		pmp::VertexProperty<VertexType> typeMarks_;
 		pmp::VertexProperty<int> idx_;		//< indicies for support region
 		pmp::VertexProperty<int> meshIdx_;	//< indicies for all vertices
@@ -66,17 +68,22 @@ namespace algorithm {
 		using SparseMatrix = Eigen::SparseMatrix<double>;
 		using SparseMatrixR = Eigen::SparseMatrix<double, Eigen::RowMajor>;
 		using DenseMatrix = Eigen::MatrixXd;
+		using DiagonalMatrix = Eigen::DiagonalMatrix<double, Eigen::Dynamic>;
+		// laplace operator
 		SparseMatrixR laplacian_;
-		SparseMatrix laplace1_; // support region
-		SparseMatrix laplace2_; // boundary region 
-		DenseMatrix affineFrame_;
-		bool useBasisFunctions_ = false;
-		DenseMatrix boundarySolution_;
-		DenseMatrix handleBasis_;
-		Eigen::DiagonalMatrix<double, Eigen::Dynamic> areaScale_;
-		Eigen::DiagonalMatrix<double, Eigen::Dynamic> smoothnessScale_;
+		SparseMatrix laplace1_; //< support region
+		SparseMatrix laplace2_; //< boundary region 
+		DiagonalMatrix areaScale_;
+		DiagonalMatrix smoothnessScale_;
 		Eigen::SparseLU<SparseMatrix> solver_; // SparseLU, SimplicialLLT, SimplicialLDLT
 		int laplaceOrder_;
 		bool useAreaScaling_ = false;
+
+		// precomputed basis functions
+		DenseMatrix localHandle_;
+		bool useBasisFunctions_ = false;
+		DenseMatrix boundarySolution_;
+		DenseMatrix handleBasis_;
+		std::array<pmp::Point,4> affineFrame_;
 	};
 }

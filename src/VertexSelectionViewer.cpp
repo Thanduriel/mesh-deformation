@@ -375,8 +375,6 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 	vec2 tVec2 = vec2(t[0], -t[1]);
 	tVec2 += vec2(1, 1);
 	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
-	std::cout << tVec2 << std::endl;
-	std::cout << "Mouse " << xpos << ":" << ypos << std::endl;
 	vec2 midScreen = tVec2;
 	vec2 currMousePos = vec2(xpos, ypos) - midScreen;
 	vec2 lastPos = vec2(last_point_2d_[0], last_point_2d_[1]) - midScreen;

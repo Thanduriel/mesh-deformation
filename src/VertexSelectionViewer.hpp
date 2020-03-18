@@ -99,7 +99,8 @@ private:
 	VertexDrawingMode vertexDrawingMode_ = VertexDrawingMode::None;
 	float brushSize_;
 	int operatorOrder_ = 3;
-	float smoothness_ = 2.f;
+	float smoothnessHandle_ = 2.f;
+	float smoothnessBoundary_ = 2.f;
 	bool useAreaScaling_ = false;
 	util::SparseOctree<pmp::Vertex, 4> queryTree_;
 

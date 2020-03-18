@@ -94,10 +94,18 @@ namespace algorithm {
 		compute_higher_order();
 		update_support_region();
 	}
-	static double temp = 0.0;
+
+	void Deformation::set_smoothness_boundary(pmp::Scalar smoothness)
+	{
+		assert(is_set());
+
+		for (Vertex v : boundaryVertices_) smoothness_[v] = smoothness;
+		compute_higher_order();
+		update_support_region();
+	}
+
 	void Deformation::translate(const pmp::Normal& translation)
 	{
-		temp = translation[0] + translation[1] + translation[2] + 1.0;
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 		for (Vertex v : handleVertices_) points[v] += translation;
 		update_support_region();

@@ -317,14 +317,21 @@ void VertexSelectionViewer::process_imgui()
 			deformationSpace_->set_order(operatorOrder_);
 			meshIsDirty_ |= MeshUpdate::Geometry;
 		}
-		if (ImGui::SliderFloat("smoothness", &smoothness_, 0.f, 2.f))
-		{
-			deformationSpace_->set_smoothness_handle(smoothness_);
-			meshIsDirty_ |= MeshUpdate::Geometry;
-		}
 		if (ImGui::Checkbox("area scaling", &useAreaScaling_))
 		{
 			deformationSpace_->set_area_scaling(useAreaScaling_);
+			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+		ImGui::Separator();
+		ImGui::Text("smoothness");
+		if (ImGui::SliderFloat("handle", &smoothnessHandle_, 0.f, 2.f))
+		{
+			deformationSpace_->set_smoothness_handle(smoothnessHandle_);
+			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+		if (ImGui::SliderFloat("boundary", &smoothnessBoundary_, 0.f, 2.f))
+		{
+			deformationSpace_->set_smoothness_boundary(smoothnessBoundary_);
 			meshIsDirty_ |= MeshUpdate::Geometry;
 		}
 	}

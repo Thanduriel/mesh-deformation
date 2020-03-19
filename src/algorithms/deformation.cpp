@@ -8,7 +8,6 @@ namespace algorithm {
 	using namespace pmp;
 
 	using Triplet = Eigen::Triplet<double>;
-	//Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::AutoAlign | Eigen::RowMajor>;
 
 	Deformation::Deformation(SurfaceMesh& mesh)
 		: mesh_(mesh),
@@ -48,7 +47,8 @@ namespace algorithm {
 		int index = 0;
 		for (Vertex v : supportVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Support; }
 		for (Vertex v : handleVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Handle; }
-		compute_boundary_set(3); // actually laplaceOrder_ is sufficient
+		// an n-ring of size laplaceOrder_ is enough to fix the boundary
+		compute_boundary_set(3);
 		for (Vertex v : boundaryVertices_) { idx_[v] = index++; }
 
 		smoothnessScale_.setIdentity();
@@ -192,16 +192,6 @@ namespace algorithm {
 			X = boundarySolution_ + solver_.solve(B1);
 		}
 
-	//	const DenseMatrix X = X1 + X2;
-	//	std::cout << X2.norm() << " | " << X1.norm();
-	//	std::cout << std::chrono::duration<double>(end - begin).count() << "\n";
-		
-	/*	if (solver_.info() != Eigen::Success)
-		{
-			std::cerr << "Deformation: Could not solve linear system\n";
-			throw 42;
-		}*/
-
 		// apply result
 		for (size_t i = 0; i < supportVertices_.size(); ++i)
 		{
@@ -257,6 +247,7 @@ namespace algorithm {
 		const std::size_t numFree = supportVertices_.size();
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
+		// use row major order to allow for quicker decomposition in L1 and L2
 		const SparseMatrixR L = useAreaScaling_ ? areaScale_ * laplacian_ : laplacian_;
 		SparseMatrixR lOperator = laplacian_;
 		for (int i = laplaceOrder_- 2; i >= 0; --i)
@@ -271,7 +262,7 @@ namespace algorithm {
 		SparseMatrix LDif = SparseMatrix(lOperator) - lOperator.transpose();
 		//std::cout << "L: " << LDif.norm() << std::endl;
 
-		// extract submatrix of marked regions and reorder acording to idx_
+		// decompose into lhs, rhs and reorder acording to idx_
 		std::vector<Triplet> tripletsL1;
 		std::vector<Triplet> tripletsL2;
 		for (std::size_t i = 0; i < numFree; ++i)
@@ -320,7 +311,11 @@ namespace algorithm {
 
 			const DenseMatrix B1 = -laplace2_ * x2;
 			handleBasis_ = solver_.solve(B1);
+			if (solver_.info() != Eigen::Success)
+				std::cerr << "Deformation: Could not solve linear system for handle vertices.\n";
 		}
+
+		// boundary vertices are fixed so this part of the rhs can be computed now
 		DenseMatrix x3 = DenseMatrix::Zero(numFixed, 3);
 		for (Vertex v : boundaryVertices_)
 		{
@@ -334,6 +329,8 @@ namespace algorithm {
 		const DenseMatrix B2 = -laplace2_ * x3;
 	
 		boundarySolution_	= solver_.solve(B2);
+		if (solver_.info() != Eigen::Success)
+			std::cerr << "Deformation: Could not solve linear system for boundary vertices.\n";
 	}
 
 	void Deformation::compute_boundary_set(int ringSize)

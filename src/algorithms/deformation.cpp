@@ -8,7 +8,6 @@ namespace algorithm {
 	using namespace pmp;
 
 	using Triplet = Eigen::Triplet<double>;
-	//Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::AutoAlign | Eigen::RowMajor>;
 
 	Deformation::Deformation(SurfaceMesh& mesh)
 		: mesh_(mesh),
@@ -29,6 +28,7 @@ namespace algorithm {
 	{
 		mesh_.remove_vertex_property(typeMarks_);
 		mesh_.remove_vertex_property(idx_);
+		mesh_.remove_vertex_property(meshIdx_);
 		mesh_.remove_vertex_property(smoothness_);
 	}
 
@@ -47,13 +47,20 @@ namespace algorithm {
 		int index = 0;
 		for (Vertex v : supportVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Support; }
 		for (Vertex v : handleVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Handle; }
-		compute_boundary_set(3); // actually laplaceOrder_ is sufficient
+		// an n-ring of size laplaceOrder_ is enough to fix the boundary
+		compute_boundary_set(3);
 		for (Vertex v : boundaryVertices_) { idx_[v] = index++; }
 
 		smoothnessScale_.setIdentity();
 
 		compute_laplace();
 		compute_higher_order();
+	}
+
+	void Deformation::reset_regions()
+	{
+		supportVertices_.clear();
+		handleVertices_.clear();
 	}
 
 	void Deformation::set_order(int k)
@@ -87,12 +94,23 @@ namespace algorithm {
 		compute_higher_order();
 		update_support_region();
 	}
-	static double temp = 0.0;
+
+	void Deformation::set_smoothness_boundary(pmp::Scalar smoothness)
+	{
+		assert(is_set());
+
+		for (Vertex v : boundaryVertices_) smoothness_[v] = smoothness;
+		compute_higher_order();
+		update_support_region();
+	}
+
 	void Deformation::translate(const pmp::Normal& translation)
 	{
-		temp = translation[0] + translation[1] + translation[2] + 1.0;
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 		for (Vertex v : handleVertices_) points[v] += translation;
+
+		for (int i = 0; i < 4; ++i) affineFrame_[i] += translation;
+
 		update_support_region();
 	}
 
@@ -106,6 +124,7 @@ namespace algorithm {
 		p /= handleVertices_.size();
 
 		for (Vertex v : handleVertices_) points[v] = p + (points[v] - p) * scale;
+		for (Point& fp : affineFrame_) fp = p + (fp - p) * scale;
 
 		update_support_region();
 	}
@@ -127,6 +146,13 @@ namespace algorithm {
 			vec4 rotVertex = rotMat * vec4(transVertex, 0);
 			points[v] = vec3(rotVertex[0], rotVertex[1], rotVertex[2]) + p;
 		}
+		for (Point& fp : affineFrame_)
+		{
+			vec3 transVertex = fp - p;
+			vec4 rotVertex = rotMat * vec4(transVertex, 0);
+			fp = vec3(rotVertex[0], rotVertex[1], rotVertex[2]) + p;
+		}
+
 		update_support_region();
 	}
 
@@ -137,16 +163,15 @@ namespace algorithm {
 		DenseMatrix X;
 		if (useBasisFunctions_)
 		{
-			Eigen::Matrix<double, 4, 3> frame;
-			for (size_t i = 0; i < 4; ++i)
+			Eigen::Matrix<double, 4, 3> f;
+			for (int i = 0; i < 4; ++i)
 			{
-				const Point p = points[handleVertices_[i]];
-				frame(i, 0) = p[0];
-				frame(i, 1) = p[1];
-				frame(i, 2) = p[2];
+				f(i, 0) = affineFrame_[i][0];
+				f(i, 1) = affineFrame_[i][1];
+				f(i, 2) = affineFrame_[i][2];
 			}
 
-			X = boundarySolution_ + handleBasis_ * frame;
+			X = boundarySolution_ + handleBasis_ * f;
 		}
 		else
 		{
@@ -166,16 +191,6 @@ namespace algorithm {
 			const DenseMatrix B1 = -laplace2_ * x2;
 			X = boundarySolution_ + solver_.solve(B1);
 		}
-
-	//	const DenseMatrix X = X1 + X2;
-	//	std::cout << X2.norm() << " | " << X1.norm();
-	//	std::cout << std::chrono::duration<double>(end - begin).count() << "\n";
-		
-	/*	if (solver_.info() != Eigen::Success)
-		{
-			std::cerr << "Deformation: Could not solve linear system\n";
-			throw 42;
-		}*/
 
 		// apply result
 		for (size_t i = 0; i < supportVertices_.size(); ++i)
@@ -232,6 +247,7 @@ namespace algorithm {
 		const std::size_t numFree = supportVertices_.size();
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
+		// use row major order to allow for quicker decomposition in L1 and L2
 		const SparseMatrixR L = useAreaScaling_ ? areaScale_ * laplacian_ : laplacian_;
 		SparseMatrixR lOperator = laplacian_;
 		for (int i = laplaceOrder_- 2; i >= 0; --i)
@@ -244,9 +260,9 @@ namespace algorithm {
 			lOperator = lOperator * smoothnessScale_ * L;
 		}
 		SparseMatrix LDif = SparseMatrix(lOperator) - lOperator.transpose();
-		std::cout << "L: " << LDif.norm() << std::endl;
+		//std::cout << "L: " << LDif.norm() << std::endl;
 
-		// extract submatrix of marked regions and reorder acording to idx_
+		// decompose into lhs, rhs and reorder acording to idx_
 		std::vector<Triplet> tripletsL1;
 		std::vector<Triplet> tripletsL2;
 		for (std::size_t i = 0; i < numFree; ++i)
@@ -268,7 +284,7 @@ namespace algorithm {
 		laplace1_.setFromTriplets(tripletsL1.begin(), tripletsL1.end());
 		laplace2_.resize(numFree, numFixed);
 		laplace2_.setFromTriplets(tripletsL2.begin(), tripletsL2.end());
-		std::cout << "L1: " << (laplace1_ - SparseMatrix(laplace1_.transpose())).norm() << std::endl;
+		//std::cout << "L1: " << (laplace1_ - SparseMatrix(laplace1_.transpose())).norm() << std::endl;
 		auto begin = std::chrono::high_resolution_clock::now();
 		solver_.compute(laplace1_);
 		auto end = std::chrono::high_resolution_clock::now();
@@ -287,15 +303,19 @@ namespace algorithm {
 			for (Vertex v : handleVertices_)
 			{
 				const int i = idx_[v] - numFree;
-				x2(i, 0) = affineFrame_(i, 0);
-				x2(i, 1) = affineFrame_(i, 1);
-				x2(i, 2) = affineFrame_(i, 2);
-				x2(i, 3) = affineFrame_(i, 3);
+				x2(i, 0) = localHandle_(i, 0);
+				x2(i, 1) = localHandle_(i, 1);
+				x2(i, 2) = localHandle_(i, 2);
+				x2(i, 3) = localHandle_(i, 3);
 			}
 
 			const DenseMatrix B1 = -laplace2_ * x2;
 			handleBasis_ = solver_.solve(B1);
+			if (solver_.info() != Eigen::Success)
+				std::cerr << "Deformation: Could not solve linear system for handle vertices.\n";
 		}
+
+		// boundary vertices are fixed so this part of the rhs can be computed now
 		DenseMatrix x3 = DenseMatrix::Zero(numFixed, 3);
 		for (Vertex v : boundaryVertices_)
 		{
@@ -309,6 +329,8 @@ namespace algorithm {
 		const DenseMatrix B2 = -laplace2_ * x3;
 	
 		boundarySolution_	= solver_.solve(B2);
+		if (solver_.info() != Eigen::Success)
+			std::cerr << "Deformation: Could not solve linear system for boundary vertices.\n";
 	}
 
 	void Deformation::compute_boundary_set(int ringSize)
@@ -349,15 +371,23 @@ namespace algorithm {
 	{
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 
-		Eigen::Matrix4d frame(4, 4);
-		for (size_t i = 0; i < 4; ++i)
-		{
-			const Point p = points[handleVertices_[i]];
-			frame(i, 0) = p[0];
-			frame(i, 1) = p[1];
-			frame(i, 2) = p[2];
-			frame(i, 3) = 1;
-		}
+	/*	affineFrame_ << 0.0, 0.0, 0.0,
+						1.0, 0.0, 0.0,
+						0.0, 1.0, 0.0,
+						0.0, 0.0, 1.0;
+						*/
+		affineFrame_[0] = pmp::Point(0.0, 0.0, 0.0);
+		affineFrame_[1] = pmp::Point(1.0, 0.0, 0.0);
+		affineFrame_[2] = pmp::Point(0.0, 1.0, 0.0);
+		affineFrame_[3] = pmp::Point(0.0, 0.0, 1.0);
+
+
+		Eigen::Matrix4d f;
+		f << 0.0, 0.0, 0.0, 1.0,
+			1.0, 0.0, 0.0, 1.0,
+			0.0, 1.0, 0.0, 1.0,
+			0.0, 0.0, 1.0, 1.0;
+
 		DenseMatrix h(handleVertices_.size(), 4);
 		for (size_t i = 0; i < handleVertices_.size(); ++i)
 		{
@@ -368,14 +398,13 @@ namespace algorithm {
 			h(i, 3) = 1;
 		}
 
-		Eigen::ColPivHouseholderQR<DenseMatrix> solver(frame.transpose());
-		//	auto solver = frame.transpose().bdcSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
-
+		// solve system Q*f = h for Q
+		Eigen::ColPivHouseholderQR<DenseMatrix> solver(f.transpose());
 		const DenseMatrix Q = solver.solve(h.transpose()).transpose();
-		//const DenseMatrix Q = h * frame.inverse();
-		if ((Q * frame - h).norm() > 0.001) return false;
+		// check that the solution is valid 
+		//if ((Q * f - h).norm() > 0.00001) return false;
 
-		affineFrame_ = Q;
+		localHandle_ = Q;
 		return true;
 	}
 }

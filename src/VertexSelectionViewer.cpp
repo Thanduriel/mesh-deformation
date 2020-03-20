@@ -1,8 +1,8 @@
 #include "VertexSelectionViewer.hpp"
 #include "algorithms/deformation.hpp"
 #include <pmp/algorithms/SurfaceNormals.h>
-#include "utils/validation.hpp"
 #include <array>
+#include <chrono>
 
 using namespace pmp;
 
@@ -57,11 +57,13 @@ void VertexSelectionViewer::do_processing()
 
 void VertexSelectionViewer::draw(const std::string& draw_mode)
 {
-	if (meshIsDirty_)
-	{
+	if (meshIsDirty_ & MeshUpdate::Geometry)
 		update_mesh();
-		meshIsDirty_ = false;
-	}
+	if(meshIsDirty_ & MeshUpdate::VertexColor)
+		mesh_.update_color_buffer();
+	
+	meshIsDirty_ = 0u;
+	
 	if (viewerMode_ != ViewerMode::View)
 	{
 		meshHandle_.draw(projection_matrix_, modelview_matrix_);
@@ -84,7 +86,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			for (auto v : mesh_.vertices())
 				vProp[v] = COLORS[static_cast<size_t>(VertexDrawingMode::Clear)];
 
-			meshIsDirty_ = true;
+			meshIsDirty_ |= MeshUpdate::VertexColor;
 			return;
 		}
 		case GLFW_KEY_W: //support region
@@ -117,7 +119,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			return;
 		case GLFW_KEY_3:
 			deformationSpace_->set_area_scaling(!deformationSpace_->get_area_scaling());
-			meshIsDirty_ = true;
+			meshIsDirty_ |= MeshUpdate::Geometry;
 			return;
 		case GLFW_KEY_S:
 			viewerMode_ = ViewerMode::Scale;
@@ -125,6 +127,8 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			return;
 		case GLFW_KEY_SPACE:
 			viewerMode_ = ViewerMode::View;
+			deformationSpace_->reset_regions();
+			init_picking();
 			return;
 		case GLFW_KEY_T:
 			viewerMode_ = ViewerMode::Translation;
@@ -167,6 +171,7 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 
 		// compute face & vertex normals, update face indices
 		update_mesh();
+		mesh_.update_color_buffer();
 
 		// set draw mode
 		if (mesh_.n_faces())
@@ -181,15 +186,14 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		// print mesh statistic
 		std::cout << "Load " << filename << ": " << mesh_.n_vertices()
 			<< " vertices, " << mesh_.n_faces() << " faces\n";
-		auto vProp = mesh_.get_vertex_property<Color>("v:col");
-		const auto& [face, angle] = util::find_min_angle(mesh_);
-		std::cout << angle << "\n";
-		for (Vertex v : mesh_.vertices(face))
-			vProp[v] = Color(1, 1, 1);
+
 		filename_ = filename;
 
 		// construct modifier
 		deformationSpace_ = std::make_unique<algorithm::Deformation>(mesh_);
+
+		// construct structure for picking
+		init_picking();
 
 		return true;
 	}
@@ -258,20 +262,16 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 	std::vector<Vertex> vVector;
 
 	vec3 p;
-	Scalar d;
 
 	if (TrackballViewer::pick(x, y, p))
 	{
-		Point picked_position(p);
-		for (auto v : mesh_.vertices())
-		{
-			d = distance(mesh_.position(v), picked_position);
-			if (d < radius)
-			{
-				vVector.push_back(v);
-			}
-		}
+		SphereQuery query;
+		query.center_ = p;
+		query.radius_ = radius;
+		queryTree_.traverse(query);
+		vVector = std::move(query.verticesHit);
 	}
+
 	return vVector;
 }
 
@@ -315,17 +315,24 @@ void VertexSelectionViewer::process_imgui()
 		if (ImGui::SliderInt("Order", &operatorOrder_, 1, 3))
 		{
 			deformationSpace_->set_order(operatorOrder_);
-			meshIsDirty_ = true;
-		}
-		if (ImGui::SliderFloat("smoothness", &smoothness_, 0.f, 2.f))
-		{
-			deformationSpace_->set_smoothness_handle(smoothness_);
-			meshIsDirty_ = true;
+			meshIsDirty_ |= MeshUpdate::Geometry;
 		}
 		if (ImGui::Checkbox("area scaling", &useAreaScaling_))
 		{
 			deformationSpace_->set_area_scaling(useAreaScaling_);
-			meshIsDirty_ = true;
+			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+		ImGui::Separator();
+		ImGui::Text("smoothness");
+		if (ImGui::SliderFloat("handle", &smoothnessHandle_, 0.f, 2.f))
+		{
+			deformationSpace_->set_smoothness_handle(smoothnessHandle_);
+			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+		if (ImGui::SliderFloat("boundary", &smoothnessBoundary_, 0.f, 2.f))
+		{
+			deformationSpace_->set_smoothness_boundary(smoothnessBoundary_);
+			meshIsDirty_ |= MeshUpdate::Geometry;
 		}
 	}
 }
@@ -357,7 +364,7 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 		deformationSpace_->translate(movement);
 		translationPoint_ += movement;
 		last_point_2d_ = ivec2(xpos, ypos);
-		meshIsDirty_ = true;
+		meshIsDirty_ |= MeshUpdate::Geometry;
 	}
 }
 
@@ -418,7 +425,7 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 			deformationSpace_->rotate(meshHandle_.compute_rotation_vector(), angle);
 
 		last_point_2d_ = ivec2(xpos, ypos);
-		meshIsDirty_ = true;
+		meshIsDirty_ |= MeshUpdate::Geometry;
 	}
 }
 
@@ -434,7 +441,7 @@ void VertexSelectionViewer::scaleHandle(float xpos, float ypos)
 		std::cout << mouseMotionNorm << std::endl;
 		deformationSpace_->scale(1 + mouseMotionNorm * 0.001f);
 		last_point_2d_ = ivec2(xpos, ypos);
-		meshIsDirty_ = true;
+		meshIsDirty_ |= MeshUpdate::Geometry;
 	}
 }
 
@@ -501,7 +508,16 @@ void VertexSelectionViewer::init_modifier()
 	meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
 	viewerMode_ = ViewerMode::Translation;
 	meshHandle_.set_translationMode();
-	meshIsDirty_ = true;
+	meshIsDirty_ |= MeshUpdate::Geometry;
+}
+
+void VertexSelectionViewer::init_picking()
+{
+	queryTree_.clear();
+
+	auto points = mesh_.get_vertex_property<Point>("v:point");
+	for (Vertex v : mesh_.vertices())
+		queryTree_.insert(points[v], v);
 }
 
 void VertexSelectionViewer::draw_on_mesh()
@@ -517,6 +533,20 @@ void VertexSelectionViewer::draw_on_mesh()
 		auto vProp = mesh_.get_vertex_property<Color>("v:col");
 		for (auto v : vVector)
 			vProp[v] = COLORS[static_cast<size_t>(vertexDrawingMode_)];
-		meshIsDirty_ = true;
+		meshIsDirty_ |= MeshUpdate::VertexColor;
 	}
+}
+
+bool VertexSelectionViewer::SphereQuery::descend(const pmp::vec3& center, double size) const
+{
+	const double fact = std::sqrt(3) * 2.0;
+	const double d = size * fact + radius_;
+
+	return sqrnorm(center - center_) < d * d;
+}
+
+void VertexSelectionViewer::SphereQuery::process(const pmp::vec3& key, Vertex v)
+{
+	if(sqrnorm(key - center_) < radius_*radius_)
+		verticesHit.push_back(v);
 }

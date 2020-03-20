@@ -7,30 +7,39 @@ ModifierHandle::ModifierHandle()
 {
 	arrowMesh_LocalX_.read("../models/arrow.off");
 	arrowMesh_LocalX_.update_opengl_buffers();
+	arrowMesh_LocalX_.update_color_buffer();
 
 	arrowMesh_LocalY_.read("../models/arrow.off");
 	arrowMesh_LocalY_.update_opengl_buffers();
+	arrowMesh_LocalY_.update_color_buffer();
 
 	arrowMesh_LocalZ_.read("../models/arrow.off");
 	arrowMesh_LocalZ_.update_opengl_buffers();
+	arrowMesh_LocalZ_.update_color_buffer();
 
 	torusMesh_RotationX_.read("../models/torus.obj");
 	torusMesh_RotationX_.update_opengl_buffers();
+	torusMesh_RotationX_.update_color_buffer();
 
 	torusMesh_RotationY_.read("../models/torus.obj");
 	torusMesh_RotationY_.update_opengl_buffers();
+	torusMesh_RotationY_.update_color_buffer();
 
 	torusMesh_RotationZ_.read("../models/torus.obj");
 	torusMesh_RotationZ_.update_opengl_buffers();
+	torusMesh_RotationZ_.update_color_buffer();
 
 	scaleMesh_ScaleX_.read("../models/scaleMesh.off");
 	scaleMesh_ScaleX_.update_opengl_buffers();
+	scaleMesh_ScaleX_.update_color_buffer();
 
 	scaleMesh_ScaleY_.read("../models/scaleMesh.off");
 	scaleMesh_ScaleY_.update_opengl_buffers();
+	scaleMesh_ScaleY_.update_color_buffer();
 
 	scaleMesh_ScaleZ_.read("../models/scaleMesh.off");
 	scaleMesh_ScaleZ_.update_opengl_buffers();
+	scaleMesh_ScaleZ_.update_color_buffer();
 
 	precompute_modelViewMatrix();
 	precompute_intersection_structure();

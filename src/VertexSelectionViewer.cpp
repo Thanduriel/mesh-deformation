@@ -368,8 +368,6 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 	vec2 tVec2 = vec2(t[0], -t[1]);
 	tVec2 += vec2(1, 1);
 	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
-	std::cout << tVec2 << std::endl;
-	std::cout << "Mouse " << xpos << ":" << ypos << std::endl;
 	vec2 midScreen = tVec2;
 	vec2 currMousePos = vec2(xpos, ypos) - midScreen;
 	vec2 lastPos = vec2(last_point_2d_[0], last_point_2d_[1]) - midScreen;
@@ -384,7 +382,41 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 		float angle = (atan2(lastPos[1], lastPos[0]) - atan2(currMousePos[1], currMousePos[0]));
 		angle *= 180.0f / M_PI;
 
-		deformationSpace_->rotate(meshHandle_.compute_rotation_vector(), angle);
+		GLint viewport[4];
+		glGetIntegerv(GL_VIEWPORT, viewport);
+		float x = xpos;
+		float y = ypos;
+
+		// take into accout highDPI scaling
+		x *= high_dpi_scaling();
+		y *= high_dpi_scaling();
+
+		// in OpenGL y=0 is at the 'bottom'
+		y = viewport[3] - y;
+
+		const float xf = ((float)x - (float)viewport[0]) / ((float)viewport[2]) * 2.0f - 1.0f;
+		const float yf = ((float)y - (float)viewport[1]) / ((float)viewport[3]) * 2.0f - 1.0f;
+
+		const mat4 mvp = projection_matrix_ * modelview_matrix_;
+		const mat4 inv = inverse(mvp);
+		// far plane
+		vec4 p = inv * vec4(xf, yf, 1.f, 1.0f);
+		// near plane
+		vec4 origin = inv * vec4(xf, yf, 0.f, 1.0f);
+		p /= p[3];
+		origin /= origin[3];
+		const vec4 dir = p - origin;
+
+		vec3 dir3 = vec3(dir[0], dir[1], dir[2]);
+
+		double dotAngle = atan2(norm(cross(dir3, meshHandle_.compute_rotation_vector())), dot(dir3, meshHandle_.compute_rotation_vector()));
+		dotAngle *= 180.0f / M_PI;
+
+		if (dotAngle < 90)
+			deformationSpace_->rotate(meshHandle_.compute_rotation_vector(), -angle);
+		else
+			deformationSpace_->rotate(meshHandle_.compute_rotation_vector(), angle);
+
 		last_point_2d_ = ivec2(xpos, ypos);
 		meshIsDirty_ = true;
 	}

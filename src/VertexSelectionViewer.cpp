@@ -310,7 +310,7 @@ void VertexSelectionViewer::process_imgui()
 			ImGui::Text(("Current ViewMode " + viewerMode_).c_str());
 		}
 		const BoundingBox bb = mesh_.bounds();
-		ImGui::SliderFloat("brush size", &brushSize_, 0.01, bb.size() * 0.5);
+		ImGui::SliderFloat("brush size", &brushSize_, 0.0001, bb.size() * 0.5);
 	}
 	if (deformationSpace_->is_set() && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
 	{

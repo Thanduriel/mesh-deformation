@@ -141,7 +141,6 @@ vec3 ModifierHandle::compute_move_vector(const mat4& modelviewProjection, float 
 	tVec2 = vec2(tVec2[0] * width * 0.5f, tVec2[1] * heigth * 0.5f);
 
 	vec2 diff = mouseStartPos_ - tVec2;
-
 	float scalar = pmp::dot(motion, diff);
 	vec3 movement = moveAxis * scalar;
 

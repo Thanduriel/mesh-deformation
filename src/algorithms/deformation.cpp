@@ -1,5 +1,6 @@
 #include "deformation.hpp"
 #include <pmp/algorithms/DifferentialGeometry.h>
+#include <pmp/algorithms/SurfaceNormals.h>
 #include <chrono>
 #include <Eigen/Dense>
 
@@ -15,6 +16,8 @@ namespace algorithm {
 		idx_(mesh_.add_vertex_property<int>("v:newIdx", -1)),
 		meshIdx_(mesh_.add_vertex_property<int>("v:meshIdx")),
 		smoothness_(mesh_.add_vertex_property<pmp::Scalar>("v:smoothness", 2.0)),
+		detailOffsets_(mesh_.add_vertex_property<pmp::Scalar>("v:detail", 0.0)),
+		lowResPositions_(mesh_.add_vertex_property<pmp::Point>("v:lowResPosition")),
 		laplacian_(mesh.n_vertices(), mesh.n_vertices()),
 		areaScale_(mesh.n_vertices()),
 		smoothnessScale_(mesh.n_vertices()),
@@ -30,6 +33,8 @@ namespace algorithm {
 		mesh_.remove_vertex_property(idx_);
 		mesh_.remove_vertex_property(meshIdx_);
 		mesh_.remove_vertex_property(smoothness_);
+		mesh_.remove_vertex_property(detailOffsets_);
+		mesh_.remove_vertex_property(lowResPositions_);
 	}
 
 	void Deformation::set_regions(const std::vector<Vertex>& supportVertices,
@@ -55,6 +60,8 @@ namespace algorithm {
 
 		compute_laplace();
 		compute_higher_order();
+
+		implicit_smoothing(0.0001);
 	}
 
 	void Deformation::reset_regions()
@@ -195,10 +202,12 @@ namespace algorithm {
 		// apply result
 		for (size_t i = 0; i < supportVertices_.size(); ++i)
 		{
-			points[supportVertices_[i]][0] = X(i, 0);
-			points[supportVertices_[i]][1] = X(i, 1);
-			points[supportVertices_[i]][2] = X(i, 2);
+			lowResPositions_[supportVertices_[i]][0] = X(i, 0);
+			lowResPositions_[supportVertices_[i]][1] = X(i, 1);
+			lowResPositions_[supportVertices_[i]][2] = X(i, 2);
 		}
+
+		update_details();
 	}
 
 	void Deformation::compute_laplace()
@@ -220,10 +229,8 @@ namespace algorithm {
 
 		// construct Laplace operator matrix L and area weights M
 		std::vector<Triplet> tripletsL;
-		std::vector<Triplet> tripletsArea;
 		for (Vertex v : mesh_.vertices())
 		{
-			tripletsArea.emplace_back(meshIdx[v], meshIdx[v], vweights[v]);
 			Scalar sumWeights = 0.0;
 			for (auto h : mesh_.halfedges(v))
 			{
@@ -262,28 +269,8 @@ namespace algorithm {
 		SparseMatrix LDif = SparseMatrix(lOperator) - lOperator.transpose();
 		//std::cout << "L: " << LDif.norm() << std::endl;
 
-		// decompose into lhs, rhs and reorder acording to idx_
-		std::vector<Triplet> tripletsL1;
-		std::vector<Triplet> tripletsL2;
-		for (std::size_t i = 0; i < numFree; ++i)
-		{
-			for (SparseMatrixR::InnerIterator it(lOperator, meshIdx_[supportVertices_[i]]); it; ++it)
-			{
-				const Vertex v(it.col());
-				const int id = idx_[v];
-				if (typeMarks_[v] == VertexType::Support)
-				{
-					tripletsL1.emplace_back(i, id, it.value());
-				}
-				else if (typeMarks_[v] != VertexType::None)
-					tripletsL2.emplace_back(i, id - numFree, it.value());
-			}
-		}
-
-		laplace1_.resize(numFree, numFree);
-		laplace1_.setFromTriplets(tripletsL1.begin(), tripletsL1.end());
-		laplace2_.resize(numFree, numFixed);
-		laplace2_.setFromTriplets(tripletsL2.begin(), tripletsL2.end());
+		decompose_operator(lOperator, laplace1_, laplace2_);
+		
 		//std::cout << "L1: " << (laplace1_ - SparseMatrix(laplace1_.transpose())).norm() << std::endl;
 		auto begin = std::chrono::high_resolution_clock::now();
 		solver_.compute(laplace1_);
@@ -333,6 +320,35 @@ namespace algorithm {
 			std::cerr << "Deformation: Could not solve linear system for boundary vertices.\n";
 	}
 
+	void Deformation::decompose_operator(const SparseMatrixR& lOperator, SparseMatrix& l1, SparseMatrix& l2) const
+	{
+		const std::size_t numFree = supportVertices_.size();
+		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
+
+		// decompose into lhs, rhs and reorder acording to idx_
+		std::vector<Triplet> tripletsL1;
+		std::vector<Triplet> tripletsL2;
+		for (std::size_t i = 0; i < numFree; ++i)
+		{
+			for (SparseMatrixR::InnerIterator it(lOperator, meshIdx_[supportVertices_[i]]); it; ++it)
+			{
+				const Vertex v(it.col());
+				const int id = idx_[v];
+				if (typeMarks_[v] == VertexType::Support)
+				{
+					tripletsL1.emplace_back(i, id, it.value());
+				}
+				else if (typeMarks_[v] != VertexType::None)
+					tripletsL2.emplace_back(i, id - numFree, it.value());
+			}
+		}
+
+		l1.resize(numFree, numFree);
+		l1.setFromTriplets(tripletsL1.begin(), tripletsL1.end());
+		l2.resize(numFree, numFixed);
+		l2.setFromTriplets(tripletsL2.begin(), tripletsL2.end());
+	}
+
 	void Deformation::compute_boundary_set(int ringSize)
 	{
 		boundaryVertices_.clear();
@@ -371,11 +387,6 @@ namespace algorithm {
 	{
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 
-	/*	affineFrame_ << 0.0, 0.0, 0.0,
-						1.0, 0.0, 0.0,
-						0.0, 1.0, 0.0,
-						0.0, 0.0, 1.0;
-						*/
 		affineFrame_[0] = pmp::Point(0.0, 0.0, 0.0);
 		affineFrame_[1] = pmp::Point(1.0, 0.0, 0.0);
 		affineFrame_[2] = pmp::Point(0.0, 1.0, 0.0);
@@ -406,5 +417,77 @@ namespace algorithm {
 
 		localHandle_ = Q;
 		return true;
+	}
+
+	void Deformation::update_details()
+	{
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+
+		// compute new normals of the low resolution mesh
+		for (Vertex v : supportVertices_) points[v] = lowResPositions_[v];
+		auto normals = mesh_.add_vertex_property<Normal>("v:normal");
+		for (Vertex v : supportVertices_) 
+			normals[v] = SurfaceNormals::compute_vertex_normal(mesh_, v);
+		
+		// apply offsets to restore details
+		for (Vertex v : supportVertices_)
+			points[v] = lowResPositions_[v] + normals[v] * detailOffsets_[v];
+
+		mesh_.remove_vertex_property(normals);
+	}
+
+	void Deformation::implicit_smoothing(Scalar timeStep)
+	{
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+
+		const std::size_t numFree = supportVertices_.size();
+		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
+		
+		DenseMatrix x1(numFree, 3);
+		for(Vertex v : supportVertices_)
+		{
+			const int i = idx_[v];
+			const Point p = points[v];
+			x1(i, 0) = p[0];
+			x1(i, 1) = p[1];
+			x1(i, 2) = p[2];
+		}
+		
+		DenseMatrix x2 = DenseMatrix::Zero(numFixed, 3);
+		for (Vertex v : handleVertices_)
+		{
+			const int i = idx_[v] - numFree;
+			const Point p = points[v];
+			x2(i, 0) = p[0];
+			x2(i, 1) = p[1];
+			x2(i, 2) = p[2];
+		}
+		for (Vertex v : boundaryVertices_)
+		{
+			const int i = idx_[v] - numFree;
+			const Point p = points[v];
+			x2(i, 0) = p[0];
+			x2(i, 1) = p[1];
+			x2(i, 2) = p[2];
+		}
+
+		SparseMatrix L1;
+		SparseMatrix L2;
+		decompose_operator(areaScale_ * laplacian_, L1, L2);
+
+		SparseMatrix I(laplace1_.rows(), laplace1_.cols());
+		I.setIdentity();
+
+		Eigen::SparseLU<SparseMatrix> solver(I - (timeStep * L1));
+		DenseMatrix X = solver.solve(x1 + timeStep * L2 * x2);
+
+		for (size_t i = 0; i < supportVertices_.size(); ++i)
+		{
+			const Vertex v = supportVertices_[i];
+			lowResPositions_[v][0] = X(i, 0);
+			lowResPositions_[v][1] = X(i, 1);
+			lowResPositions_[v][2] = X(i, 2);
+			detailOffsets_[v] = pmp::distance(lowResPositions_[v], points[v]);
+		}
 	}
 }

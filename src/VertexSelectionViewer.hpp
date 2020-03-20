@@ -86,6 +86,8 @@ private:
 	void init_picking();
 	void draw_on_mesh();
 
+	vec2 compute_screenCoordinates(vec3 vec);
+
 	struct SphereQuery
 	{
 		bool descend(const pmp::vec3& center, double size) const;

@@ -67,7 +67,7 @@ void ModifierHandle::draw(const mat4& projection_matrix, const mat4& view_matrix
 	{
 		scaleMesh_ScaleX_.draw(projection_matrix, view_matrix * modelMatrixScaleX_, "Smooth Shading");
 		scaleMesh_ScaleY_.draw(projection_matrix, view_matrix * modelMatrixScaleY_, "Smooth Shading");
-		scaleMesh_ScaleZ_.draw(projection_matrix, view_matrix * modelMatrixScaleZ_, "Smooth Shading");
+		//scaleMesh_ScaleZ_.draw(projection_matrix, view_matrix * modelMatrixScaleZ_, "Smooth Shading");
 	}
 }
 
@@ -121,7 +121,7 @@ bool ModifierHandle::is_scaleMode()
 	return false;
 }
 
-vec3 ModifierHandle::compute_move_vector(const mat4& modelviewProjection, vec2 motion)
+vec3 ModifierHandle::compute_move_vector(const mat4& modelviewProjection, float width, float heigth, vec2 motion)
 {
 	vec3 moveAxis;
 	if (mode_ == EMode::Translation_X)
@@ -133,12 +133,17 @@ vec3 ModifierHandle::compute_move_vector(const mat4& modelviewProjection, vec2 m
 	else
 		return vec3(0, 0, 0);
 
-	vec4 t = modelviewProjection * vec4(moveAxis, 1.0f);
+	vec4 t = modelviewProjection * vec4(origin_, 1.0f);
+	t /= t[3];
 	vec2 tVec2 = vec2(t[0], -t[1]);
-	tVec2.normalize();
+	tVec2 += vec2(1, 1);
+	tVec2 = vec2(tVec2[0], tVec2[1]);
+	tVec2 = vec2(tVec2[0] * width * 0.5f, tVec2[1] * heigth * 0.5f);
 
-	float scalar = pmp::dot(motion, tVec2);
-	vec3 movement = moveAxis * scalar * 0.001f;
+	vec2 diff = mouseStartPos_ - tVec2;
+
+	float scalar = pmp::dot(motion, diff);
+	vec3 movement = moveAxis * scalar;
 
 	return movement;
 }
@@ -215,6 +220,16 @@ void ModifierHandle::set_scaleMode()
 	}
 }
 
+void ModifierHandle::set_mouseStartPos(vec2 pos)
+{
+	mouseStartPos_ = pos;
+}
+
+vec2 ModifierHandle::get_mouseStartPos()
+{
+	return mouseStartPos_;
+}
+
 bool ModifierHandle::is_hit(const Ray& ray)
 {
 	if (is_translationMode())
@@ -263,11 +278,6 @@ bool ModifierHandle::is_hit(const Ray& ray)
 		else if (is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_))
 		{
 			mode_ = EMode::Scale_Y;
-			return true;
-		}
-		else if (is_hit(ray, modelMatrixScaleInverseZ_, scaleMesh_ScaleZ_))
-		{
-			mode_ = EMode::Scale_Z;
 			return true;
 		}
 	}

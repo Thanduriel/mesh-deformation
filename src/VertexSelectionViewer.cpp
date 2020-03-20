@@ -59,11 +59,11 @@ void VertexSelectionViewer::draw(const std::string& draw_mode)
 {
 	if (meshIsDirty_ & MeshUpdate::Geometry)
 		update_mesh();
-	if(meshIsDirty_ & MeshUpdate::VertexColor)
+	if (meshIsDirty_ & MeshUpdate::VertexColor)
 		mesh_.update_color_buffer();
-	
+
 	meshIsDirty_ = 0u;
-	
+
 	if (viewerMode_ != ViewerMode::View)
 	{
 		meshHandle_.draw(projection_matrix_, modelview_matrix_);
@@ -223,6 +223,8 @@ void VertexSelectionViewer::mouse(int button, int action, int mods)
 		&& meshHandle_.is_hit(get_ray(last_point_2d_[0], last_point_2d_[1])))
 	{
 		isVertexTranslationMouseActive_ = true;
+		meshHandle_.set_mouseStartPos(vec2(last_point_2d_[0], last_point_2d_[1]));
+		deformationSpace_->reset_scale_origin();
 	}
 	else
 	{
@@ -358,9 +360,13 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 	vec2 currMousePos = vec2(xpos, ypos);
 	vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
 	float mouseMotionNorm = pmp::norm(mouseMotion);
+	vec2 midScreen = compute_screenCoordinates(meshHandle_.origin());
+
+
 	if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0)
 	{
-		vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, mouseMotion);
+		mouseMotion = vec2(mouseMotion[0], mouseMotion[1]);
+		vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, width(), height(), mouseMotion);
 		deformationSpace_->translate(movement);
 		translationPoint_ += movement;
 		last_point_2d_ = ivec2(xpos, ypos);
@@ -370,12 +376,7 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 
 void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 {
-	vec4 t = projection_matrix_ * modelview_matrix_ * vec4(meshHandle_.origin(), 1.0f);
-	t /= t[3];
-	vec2 tVec2 = vec2(t[0], -t[1]);
-	tVec2 += vec2(1, 1);
-	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
-	vec2 midScreen = tVec2;
+	vec2 midScreen = compute_screenCoordinates(meshHandle_.origin());
 	vec2 currMousePos = vec2(xpos, ypos) - midScreen;
 	vec2 lastPos = vec2(last_point_2d_[0], last_point_2d_[1]) - midScreen;
 	vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
@@ -431,15 +432,15 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 
 void VertexSelectionViewer::scaleHandle(float xpos, float ypos)
 {
-	vec2 midScreen = vec2(width() / 2.0f, height() / 2.0f);
+	vec2 midScreen = compute_screenCoordinates(meshHandle_.origin());
 	vec2 currMousePos = vec2(xpos, ypos) - midScreen;
-	vec2 lastPos = vec2(last_point_2d_[0], last_point_2d_[1]) - midScreen;
+	vec2 startPos = meshHandle_.get_mouseStartPos() - midScreen;
+	float maxNorm = norm(startPos);
 
-	float mouseMotionNorm = norm(currMousePos) - norm(lastPos);
+	float mouseMotionNorm = norm(currMousePos) - norm(startPos);
 	if (mouseMotionNorm != 0)
 	{
-		std::cout << mouseMotionNorm << std::endl;
-		deformationSpace_->scale(1 + mouseMotionNorm * 0.001f);
+		deformationSpace_->scale(norm(currMousePos) / maxNorm);
 		last_point_2d_ = ivec2(xpos, ypos);
 		meshIsDirty_ |= MeshUpdate::Geometry;
 	}
@@ -537,6 +538,17 @@ void VertexSelectionViewer::draw_on_mesh()
 	}
 }
 
+vec2 VertexSelectionViewer::compute_screenCoordinates(vec3 vec)
+{
+	vec4 t = projection_matrix_ * modelview_matrix_ * vec4(vec, 1.0f);
+	t /= t[3];
+	vec2 tVec2 = vec2(t[0], -t[1]);
+	tVec2 += vec2(1, 1);
+	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
+
+	return tVec2;
+}
+
 bool VertexSelectionViewer::SphereQuery::descend(const pmp::vec3& center, double size) const
 {
 	const double fact = std::sqrt(3) * 2.0;
@@ -547,6 +559,6 @@ bool VertexSelectionViewer::SphereQuery::descend(const pmp::vec3& center, double
 
 void VertexSelectionViewer::SphereQuery::process(const pmp::vec3& key, Vertex v)
 {
-	if(sqrnorm(key - center_) < radius_*radius_)
+	if (sqrnorm(key - center_) < radius_*radius_)
 		verticesHit.push_back(v);
 }

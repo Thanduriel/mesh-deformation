@@ -118,13 +118,16 @@ namespace algorithm {
 	{
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 
-		// find center point
-		Point p(0.f);
-		for (Vertex v : handleVertices_) p += points[v];
-		p /= handleVertices_.size();
-
-		for (Vertex v : handleVertices_) points[v] = p + (points[v] - p) * scale;
-		for (Point& fp : affineFrame_) fp = p + (fp - p) * scale;
+		for (size_t i = 0; i < handleVertices_.size(); i++)
+		{
+			auto v = handleVertices_[i];
+			points[v] = centerScale_ + (originScaleVertices_[i] - centerScale_) * scale;
+		}
+		for (size_t i = 0; i < affineFrame_.size(); i++)
+		{
+			auto fp = affineFrame_[i];
+			affineFrame_[i] = centerScale_ + (originScaleFrame_[i] - centerScale_) * scale;
+		}
 
 		update_support_region();
 	}
@@ -154,6 +157,24 @@ namespace algorithm {
 		}
 
 		update_support_region();
+	}
+
+	void Deformation::reset_scale_origin()
+	{
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+		originScaleVertices_.clear();
+		originScaleFrame_.clear();
+
+		// find center point
+		centerScale_ = Point(0.0f);
+		for (Vertex v : handleVertices_) centerScale_ += points[v];
+		centerScale_ /= handleVertices_.size();
+
+		for (Vertex v : handleVertices_)
+			originScaleVertices_.push_back(points[v]);
+
+		for (Point p : affineFrame_)
+			originScaleFrame_.push_back(p);
 	}
 
 	void Deformation::update_support_region()
@@ -250,7 +271,7 @@ namespace algorithm {
 		// use row major order to allow for quicker decomposition in L1 and L2
 		const SparseMatrixR L = useAreaScaling_ ? areaScale_ * laplacian_ : laplacian_;
 		SparseMatrixR lOperator = laplacian_;
-		for (int i = laplaceOrder_- 2; i >= 0; --i)
+		for (int i = laplaceOrder_ - 2; i >= 0; --i)
 		{
 			auto& diagonal = smoothnessScale_.diagonal();
 			for (Vertex v : handleVertices_)
@@ -288,9 +309,9 @@ namespace algorithm {
 		auto begin = std::chrono::high_resolution_clock::now();
 		solver_.compute(laplace1_);
 		auto end = std::chrono::high_resolution_clock::now();
-	//	std::cout << "decomposition:" << std::chrono::duration<double>(end - begin).count() << "\n";
+		//	std::cout << "decomposition:" << std::chrono::duration<double>(end - begin).count() << "\n";
 
-		// precomputed basis functions
+			// precomputed basis functions
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 
 		useBasisFunctions_ = compute_affine_frame();
@@ -327,8 +348,8 @@ namespace algorithm {
 		}
 
 		const DenseMatrix B2 = -laplace2_ * x3;
-	
-		boundarySolution_	= solver_.solve(B2);
+
+		boundarySolution_ = solver_.solve(B2);
 		if (solver_.info() != Eigen::Success)
 			std::cerr << "Deformation: Could not solve linear system for boundary vertices.\n";
 	}
@@ -371,11 +392,11 @@ namespace algorithm {
 	{
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 
-	/*	affineFrame_ << 0.0, 0.0, 0.0,
-						1.0, 0.0, 0.0,
-						0.0, 1.0, 0.0,
-						0.0, 0.0, 1.0;
-						*/
+		/*	affineFrame_ << 0.0, 0.0, 0.0,
+							1.0, 0.0, 0.0,
+							0.0, 1.0, 0.0,
+							0.0, 0.0, 1.0;
+							*/
 		affineFrame_[0] = pmp::Point(0.0, 0.0, 0.0);
 		affineFrame_[1] = pmp::Point(1.0, 0.0, 0.0);
 		affineFrame_[2] = pmp::Point(0.0, 1.0, 0.0);

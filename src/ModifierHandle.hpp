@@ -41,11 +41,15 @@ public:
 	void set_rotationMode();
 	void set_scaleMode();
 
+	void set_mouseStartPos(vec2 pos);
+
+	vec2 get_mouseStartPos();
+
 	bool is_translationMode();
 	bool is_rotationMode();
 	bool is_scaleMode();
 
-	vec3 compute_move_vector(const mat4& modelviewProjection, vec2 motion);
+	vec3 compute_move_vector(const mat4& modelviewProjection, float width, float heigth, vec2 motion);
 	vec3 compute_rotation_vector();
 	vec3 origin();
 
@@ -98,6 +102,8 @@ private:
 	vec3 local_x_;
 	vec3 local_y_;
 	vec3 local_z_;
+
+	vec2 mouseStartPos_;
 
 	EMode mode_;
 };

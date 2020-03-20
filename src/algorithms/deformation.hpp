@@ -43,6 +43,9 @@ namespace algorithm {
 		void translate(const pmp::Normal& translation);
 		void scale(pmp::Scalar scale);
 		void rotate(const pmp::Normal& axis, pmp::Scalar angle);
+
+		//TODO Comment
+		void reset_scale_origin();
 	private:
 		// Updates the positions of the support vertices with the current operator.
 		void update_support_region();
@@ -85,5 +88,10 @@ namespace algorithm {
 		DenseMatrix boundarySolution_;
 		DenseMatrix handleBasis_;
 		std::array<pmp::Point,4> affineFrame_;
+
+		// Scale handling
+		std::vector<pmp::Point> originScaleVertices_;
+		std::vector<pmp::Point> originScaleFrame_;
+		pmp::Point centerScale_;
 	};
 }

@@ -86,6 +86,7 @@ private:
 	bool init_modifier();
 	void init_picking();
 	void draw_on_mesh();
+	void set_viewer_mode(ViewerMode mode);
 
 	vec2 compute_screenCoordinates(vec3 vec);
 
@@ -100,14 +101,17 @@ private:
 		std::vector<Vertex> verticesHit;
 	};
 
+	// gui options
 	VertexDrawingMode vertexDrawingMode_ = VertexDrawingMode::None;
 	float brushSize_;
 	int operatorOrder_ = 3;
 	float smoothnessHandle_ = 2.f;
 	float smoothnessBoundary_ = 2.f;
 	bool useAreaScaling_ = false;
-	util::SparseOctree<pmp::Vertex, 4> queryTree_;
+	const char* currentVertexDrawItem_ = nullptr;
+	const char* currentModifierItem_ = nullptr;
 
+	util::SparseOctree<pmp::Vertex, 4> queryTree_;
 	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;
 	ViewerMode viewerMode_;

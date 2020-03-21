@@ -104,9 +104,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		case GLFW_KEY_SPACE:
 			if (init_modifier())
 			{
-				viewerMode_ = ViewerMode::Translation;
-				vertexDrawingMode_ = VertexDrawingMode::None;
-				meshHandle_.set_translationMode();
+				set_viewer_mode(ViewerMode::Translation);
 			}
 			return;
 		}
@@ -116,25 +114,20 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		switch (key)
 		{
 		case GLFW_KEY_R:
-			viewerMode_ = ViewerMode::Rotation;
-			meshHandle_.set_rotationMode();
+			set_viewer_mode(ViewerMode::Rotation);
 			return;
 		case GLFW_KEY_3:
 			deformationSpace_->set_area_scaling(!deformationSpace_->get_area_scaling());
 			meshIsDirty_ |= MeshUpdate::Geometry;
 			return;
 		case GLFW_KEY_S:
-			viewerMode_ = ViewerMode::Scale;
-			meshHandle_.set_scaleMode();
+			set_viewer_mode(ViewerMode::Scale);
 			return;
 		case GLFW_KEY_SPACE:
-			viewerMode_ = ViewerMode::View;
-			deformationSpace_->reset_regions();
-			init_picking();
+			set_viewer_mode(ViewerMode::View);
 			return;
 		case GLFW_KEY_T:
-			viewerMode_ = ViewerMode::Translation;
-			meshHandle_.set_translationMode();
+			set_viewer_mode(ViewerMode::Translation);
 			return;
 		}
 	}
@@ -284,18 +277,17 @@ void VertexSelectionViewer::process_imgui()
 {
 	if (viewerMode_ == ViewerMode::View && ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		constexpr const char* VERTEX_DRAW_NAMES[] = { "View [R]", "Clear [E]", "Handle [Q]", "Support [W]" };
-		static const char* currentItem = VERTEX_DRAW_NAMES[0];
+		constexpr static const char* VERTEX_DRAW_NAMES[] = { "View [R]", "Clear [E]", "Handle [Q]", "Support [W]" };
 		// display possible changes from hotkeys
-		currentItem = VERTEX_DRAW_NAMES[static_cast<size_t>(vertexDrawingMode_)];
-		if (ImGui::BeginCombo("draw mode", currentItem))
+		currentVertexDrawItem_ = VERTEX_DRAW_NAMES[static_cast<size_t>(vertexDrawingMode_)];
+		if (ImGui::BeginCombo("draw mode", currentVertexDrawItem_))
 		{
 			for (int i = 0; i < 4; ++i)
 			{
-				const bool isSelected = currentItem == VERTEX_DRAW_NAMES[i];
+				const bool isSelected = currentVertexDrawItem_ == VERTEX_DRAW_NAMES[i];
 				if (ImGui::Selectable(VERTEX_DRAW_NAMES[i], isSelected))
 				{
-					currentItem = VERTEX_DRAW_NAMES[i];
+					currentVertexDrawItem_ = VERTEX_DRAW_NAMES[i];
 					vertexDrawingMode_ = static_cast<VertexDrawingMode>(i);
 				}
 				if (isSelected)
@@ -304,6 +296,7 @@ void VertexSelectionViewer::process_imgui()
 			ImGui::EndCombo();
 		}
 
+		// todo: move this information to a better place?
 		if (viewerMode_ != ViewerMode::View)
 		{
 			ImGui::BulletText("X: Select local x-axis");
@@ -317,6 +310,25 @@ void VertexSelectionViewer::process_imgui()
 	}
 	if (viewerMode_ != ViewerMode::View && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		constexpr static const char* MODIFIER_NAMES[] = { "Translate [T]", "Rotate [R]", "Scale [S]"};
+		// display possible changes from hotkeys
+		currentModifierItem_ = MODIFIER_NAMES[static_cast<size_t>(viewerMode_)-1];
+		if (ImGui::BeginCombo("modifier", currentModifierItem_))
+		{
+			for (int i = 0; i < 3; ++i)
+			{
+				const bool isSelected = currentModifierItem_ == MODIFIER_NAMES[i];
+				if (ImGui::Selectable(MODIFIER_NAMES[i], isSelected))
+				{
+					currentModifierItem_ = MODIFIER_NAMES[i];
+					set_viewer_mode(static_cast<ViewerMode>(i+1));
+				}
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+
 		if (ImGui::SliderInt("Order", &operatorOrder_, 1, 3))
 		{
 			deformationSpace_->set_order(operatorOrder_);
@@ -512,8 +524,6 @@ bool VertexSelectionViewer::init_modifier()
 	deformationSpace_->set_regions(supportVertices, handleVertices);
 
 	meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
-	viewerMode_ = ViewerMode::Translation;
-	meshHandle_.set_translationMode();
 	meshIsDirty_ |= MeshUpdate::Geometry;
 
 	return true;
@@ -554,6 +564,33 @@ vec2 VertexSelectionViewer::compute_screenCoordinates(vec3 vec)
 	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
 
 	return tVec2;
+}
+
+void VertexSelectionViewer::set_viewer_mode(ViewerMode mode)
+{
+	if (mode == viewerMode_) return;
+
+	if (viewerMode_ == ViewerMode::View)
+		vertexDrawingMode_ = VertexDrawingMode::None;
+
+	switch (mode)
+	{
+	case ViewerMode::Rotation:
+		meshHandle_.set_rotationMode();
+		break;
+	case ViewerMode::Scale:
+		meshHandle_.set_scaleMode();
+		break;
+	case ViewerMode::Translation:
+		meshHandle_.set_translationMode();
+		break;
+	case ViewerMode::View:
+		deformationSpace_->reset_regions();
+		init_picking();
+		break;
+	}
+
+	viewerMode_ = mode;
 }
 
 bool VertexSelectionViewer::SphereQuery::descend(const pmp::vec3& center, double size) const

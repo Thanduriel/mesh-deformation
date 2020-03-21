@@ -82,7 +82,8 @@ private:
 	void translationHandle(float xpos, float ypos);
 	void rotationHandle(float xpos, float ypos);
 	void scaleHandle(float xpos, float ypos);
-	void init_modifier();
+	// @return Whether the current colored areas are valid.
+	bool init_modifier();
 	void init_picking();
 	void draw_on_mesh();
 
@@ -95,6 +96,7 @@ private:
 
 		pmp::vec3 center_;
 		double radius_;
+		double radiusSq_;
 		std::vector<Vertex> verticesHit;
 	};
 

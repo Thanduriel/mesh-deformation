@@ -61,7 +61,10 @@ namespace algorithm {
 		compute_laplace();
 		compute_higher_order();
 
-		implicit_smoothing(0.0001);
+		implicit_smoothing(0.001);
+
+		// update vertices now to not have them jump with the first modification
+		update_support_region();
 	}
 
 	void Deformation::reset_regions()
@@ -235,12 +238,17 @@ namespace algorithm {
 	{
 		assert(supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size());
 
+		const size_t numFree = supportVertices_.size();
+		areaScale1Inv_.resize(numFree);
 		// compute weights
-		auto vweights = mesh_.add_vertex_property<Scalar>("v:area");
 		for (Vertex v : mesh_.vertices())
 		{
-			vweights[v] = 0.5 / voronoi_area(mesh_, v);
-			areaScale_.diagonal()[meshIdx_[v]] = vweights[v];
+			const Scalar vw = 0.5 / voronoi_area(mesh_, v);
+			areaScale_.diagonal()[meshIdx_[v]] = vw;
+
+			// weights of free vertices can be moved to the right side to preserve symmetry
+			if (typeMarks_[v] == VertexType::Support)
+				areaScale1Inv_.diagonal()[idx_[v]] = 1.0 / vw;
 		}
 
 		auto eweights = mesh_.add_edge_property<Scalar>("e:cotan");
@@ -248,7 +256,7 @@ namespace algorithm {
 
 		const auto& meshIdx = meshIdx_;
 
-		// construct Laplace operator matrix L and area weights M
+		// construct the full symmetric Laplace operator matrix L
 		std::vector<Triplet> tripletsL;
 		for (Vertex v : mesh_.vertices())
 		{
@@ -266,7 +274,6 @@ namespace algorithm {
 		// use row major to allow for quicker extraction of L1 and L2
 		laplacian_.setFromTriplets(tripletsL.begin(), tripletsL.end());
 
-		mesh_.remove_vertex_property(vweights);
 		mesh_.remove_edge_property(eweights);
 	}
 
@@ -277,6 +284,7 @@ namespace algorithm {
 
 		// use row major order to allow for quicker decomposition in L1 and L2
 		const SparseMatrixR L = useAreaScaling_ ? areaScale_ * laplacian_ : laplacian_;
+		// the left most L does not need to be scaled since ML = 0 <=> L = 0
 		SparseMatrixR lOperator = laplacian_;
 		for (int i = laplaceOrder_ - 2; i >= 0; --i)
 		{
@@ -287,16 +295,10 @@ namespace algorithm {
 				diagonal[meshIdx_[v]] = std::clamp(smoothness_[v] - i, Scalar(0.0), Scalar(1.0));
 			lOperator = lOperator * smoothnessScale_ * L;
 		}
-		SparseMatrix LDif = SparseMatrix(lOperator) - lOperator.transpose();
-		//std::cout << "L: " << LDif.norm() << std::endl;
 
 		decompose_operator(lOperator, laplace1_, laplace2_);
 		
-		//std::cout << "L1: " << (laplace1_ - SparseMatrix(laplace1_.transpose())).norm() << std::endl;
-		auto begin = std::chrono::high_resolution_clock::now();
 		solver_.compute(laplace1_);
-		auto end = std::chrono::high_resolution_clock::now();
-		//	std::cout << "decomposition:" << std::chrono::duration<double>(end - begin).count() << "\n";
 
 			// precomputed basis functions
 		auto points = mesh_.get_vertex_property<Point>("v:point");
@@ -494,13 +496,14 @@ namespace algorithm {
 
 		SparseMatrix L1;
 		SparseMatrix L2;
-		decompose_operator(areaScale_ * laplacian_, L1, L2);
+		decompose_operator(laplacian_, L1, L2);
 
 		SparseMatrix I(laplace1_.rows(), laplace1_.cols());
 		I.setIdentity();
 
-		Eigen::SparseLU<SparseMatrix> solver(I - (timeStep * L1));
-		DenseMatrix X = solver.solve(x1 + timeStep * L2 * x2);
+		// L1 is symmetric
+		Eigen::SimplicialLDLT<SparseMatrix> solver(areaScale1Inv_ * I - (timeStep * L1));
+		DenseMatrix X = solver.solve(areaScale1Inv_ * x1 + timeStep * L2 * x2);
 
 		for (size_t i = 0; i < supportVertices_.size(); ++i)
 		{

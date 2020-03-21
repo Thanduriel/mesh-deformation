@@ -57,7 +57,7 @@ namespace algorithm {
 		void update_support_region();
 		void compute_laplace();
 		void compute_higher_order();
-		// decomposes the matrix into parts assosiated with the free and fixed vertices
+		// Decomposes the matrix into parts assosiated with the free and fixed vertices.
 		// @param l1 Output target for the free vertices.
 		// @param l2 Output target for the fixed vertices.
 		void decompose_operator(const SparseMatrixR& lOperator, SparseMatrix& l1, SparseMatrix& l2) const;
@@ -91,9 +91,10 @@ namespace algorithm {
 		using DiagonalMatrix = Eigen::DiagonalMatrix<double, Eigen::Dynamic>;
 		// laplace operator
 		SparseMatrixR laplacian_;
-		SparseMatrix laplace1_; //< support region
-		SparseMatrix laplace2_; //< boundary region 
+		SparseMatrix laplace1_; //< free vertices
+		SparseMatrix laplace2_; //< fixed vertices
 		DiagonalMatrix areaScale_;
+		DiagonalMatrix areaScale1Inv_; //< scale for only the free vertices
 		DiagonalMatrix smoothnessScale_;
 		Eigen::SparseLU<SparseMatrix> solver_; // SparseLU, SimplicialLLT, SimplicialLDLT
 		int laplaceOrder_;

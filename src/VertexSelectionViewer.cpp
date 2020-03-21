@@ -102,10 +102,12 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			vertexDrawingMode_ = VertexDrawingMode::None;
 			return;
 		case GLFW_KEY_SPACE:
-			viewerMode_ = ViewerMode::Translation;
-			vertexDrawingMode_ = VertexDrawingMode::None;
-			meshHandle_.set_translationMode();
-			init_modifier();
+			if (init_modifier())
+			{
+				viewerMode_ = ViewerMode::Translation;
+				vertexDrawingMode_ = VertexDrawingMode::None;
+				meshHandle_.set_translationMode();
+			}
 			return;
 		}
 	}
@@ -268,8 +270,9 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 	if (TrackballViewer::pick(x, y, p))
 	{
 		SphereQuery query;
-		query.center_ = p;
-		query.radius_ = radius;
+		query.center_   = p;
+		query.radius_   = radius;
+		query.radiusSq_ = radius*radius;
 		queryTree_.traverse(query);
 		vVector = std::move(query.verticesHit);
 	}
@@ -279,7 +282,7 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 
 void VertexSelectionViewer::process_imgui()
 {
-	if (ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
+	if (viewerMode_ == ViewerMode::View && ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		constexpr const char* VERTEX_DRAW_NAMES[] = { "View [R]", "Clear [E]", "Handle [Q]", "Support [W]" };
 		static const char* currentItem = VERTEX_DRAW_NAMES[0];
@@ -312,7 +315,7 @@ void VertexSelectionViewer::process_imgui()
 		const BoundingBox bb = mesh_.bounds();
 		ImGui::SliderFloat("brush size", &brushSize_, 0.0001, bb.size() * 0.5);
 	}
-	if (deformationSpace_->is_set() && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
+	if (viewerMode_ != ViewerMode::View && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		if (ImGui::SliderInt("Order", &operatorOrder_, 1, 3))
 		{
@@ -475,7 +478,7 @@ Ray VertexSelectionViewer::get_ray(int x, int y)
 
 }
 
-void VertexSelectionViewer::init_modifier()
+bool VertexSelectionViewer::init_modifier()
 {
 	auto points = mesh_.get_vertex_property<Point>("v:point");
 	auto colors = mesh_.get_vertex_property<Color>("v:col");
@@ -500,6 +503,8 @@ void VertexSelectionViewer::init_modifier()
 		}
 	}
 
+	if (!supportVertices.size() || !handleVertices.size()) return false;
+
 	translationPoint_ = handlePoint / pointIndex;
 	normal.normalize();
 	translationNormal_ = normal;
@@ -510,6 +515,8 @@ void VertexSelectionViewer::init_modifier()
 	viewerMode_ = ViewerMode::Translation;
 	meshHandle_.set_translationMode();
 	meshIsDirty_ |= MeshUpdate::Geometry;
+
+	return true;
 }
 
 void VertexSelectionViewer::init_picking()
@@ -559,6 +566,6 @@ bool VertexSelectionViewer::SphereQuery::descend(const pmp::vec3& center, double
 
 void VertexSelectionViewer::SphereQuery::process(const pmp::vec3& key, Vertex v)
 {
-	if (sqrnorm(key - center_) < radius_*radius_)
+	if (sqrnorm(key - center_) < radiusSq_)
 		verticesHit.push_back(v);
 }

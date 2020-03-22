@@ -129,6 +129,10 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		case GLFW_KEY_T:
 			set_viewer_mode(ViewerMode::Translation);
 			return;
+		case GLFW_KEY_D:
+			deformationSpace_->toggle_details();
+			meshIsDirty_ |= MeshUpdate::Geometry;
+			return;
 		}
 	}
 

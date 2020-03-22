@@ -187,6 +187,13 @@ namespace algorithm {
 			originScaleFrame_.push_back(p);
 	}
 
+	void Deformation::toggle_details()
+	{
+		showDetails_ = !showDetails_;
+
+		update_details();
+	}
+
 	void Deformation::update_support_region()
 	{
 		auto points = mesh_.get_vertex_property<Point>("v:point");
@@ -445,18 +452,25 @@ namespace algorithm {
 	void Deformation::update_details()
 	{
 		auto points = mesh_.get_vertex_property<Point>("v:point");
+		if (showDetails_)
+		{
+			// compute new normals of the low resolution mesh
+			for (Vertex v : supportVertices_) points[v] = lowResPositions_[v];
+			auto normals = mesh_.add_vertex_property<Normal>("v:normal");
+			for (Vertex v : supportVertices_)
+				normals[v] = SurfaceNormals::compute_vertex_normal(mesh_, v);
 
-		// compute new normals of the low resolution mesh
-		for (Vertex v : supportVertices_) points[v] = lowResPositions_[v];
-		auto normals = mesh_.add_vertex_property<Normal>("v:normal");
-		for (Vertex v : supportVertices_) 
-			normals[v] = SurfaceNormals::compute_vertex_normal(mesh_, v);
-		
-		// apply offsets to restore details
-		for (Vertex v : supportVertices_)
-			points[v] = lowResPositions_[v] + normals[v] * detailOffsets_[v];
+			// apply offsets to restore details
+			for (Vertex v : supportVertices_)
+				points[v] = lowResPositions_[v] + normals[v] * detailOffsets_[v];
 
-		mesh_.remove_vertex_property(normals);
+			mesh_.remove_vertex_property(normals);
+		}
+		else
+		{
+			for (Vertex v : supportVertices_)
+				points[v] = lowResPositions_[v];
+		}
 	}
 
 	void Deformation::implicit_smoothing(Scalar timeStep)
@@ -511,7 +525,9 @@ namespace algorithm {
 			lowResPositions_[v][0] = X(i, 0);
 			lowResPositions_[v][1] = X(i, 1);
 			lowResPositions_[v][2] = X(i, 2);
-			detailOffsets_[v] = pmp::distance(lowResPositions_[v], points[v]);
+			const Normal n = SurfaceNormals::compute_vertex_normal(mesh_, v);
+			// signed distance from the plane n * (x-p) = 0
+			detailOffsets_[v] = pmp::dot(n, (points[v] - lowResPositions_[v]));
 		}
 	}
 }

@@ -46,6 +46,8 @@ namespace algorithm {
 
 		//TODO Comment
 		void reset_scale_origin();
+
+		void toggle_details();
 	private:
 		// matrix types in use
 		using SparseMatrix = Eigen::SparseMatrix<double>;
@@ -111,5 +113,8 @@ namespace algorithm {
 		std::vector<pmp::Point> originScaleVertices_;
 		std::vector<pmp::Point> originScaleFrame_;
 		pmp::Point centerScale_;
+
+		// smoothing related
+		bool showDetails_ = true;
 	};
 }

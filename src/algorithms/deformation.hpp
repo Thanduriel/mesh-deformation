@@ -39,7 +39,7 @@ namespace algorithm {
 		// Operator is ready for modifications to the vertices.
 		bool is_set() const;
 
-		// Applies the given transformation the handle vertices and updates the vertices in the support region.
+		// Applies the given transformation to the handle vertices and updates the vertices in the support region.
 		void translate(const pmp::Normal& translation);
 		void scale(pmp::Scalar scale);
 		void rotate(const pmp::Normal& axis, pmp::Scalar angle);

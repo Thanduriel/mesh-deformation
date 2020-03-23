@@ -163,6 +163,8 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 	// load mesh
 	if (mesh_.read(filename))
 	{
+		strcpy_s(fileNameBuffer_, filename);
+
 		// update scene center and bounds
 		BoundingBox bb = mesh_.bounds();
 		set_scene((vec3)bb.center(), 0.5 * bb.size());
@@ -279,6 +281,17 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 
 void VertexSelectionViewer::process_imgui()
 {
+	ImGui::InputText("", fileNameBuffer_, 512);
+	if (ImGui::Button("open"))
+	{
+		if (load_mesh(fileNameBuffer_)) set_viewer_mode(ViewerMode::View);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("save"))
+	{
+		mesh_.write(fileNameBuffer_);
+	}
+
 	if (viewerMode_ == ViewerMode::View && ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		constexpr static const char* VERTEX_DRAW_NAMES[] = { "View [R]", "Clear [E]", "Handle [Q]", "Support [W]" };

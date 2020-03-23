@@ -110,6 +110,7 @@ private:
 	bool useAreaScaling_ = false;
 	const char* currentVertexDrawItem_ = nullptr;
 	const char* currentModifierItem_ = nullptr;
+	char fileNameBuffer_[512] = {};
 
 	util::SparseOctree<pmp::Vertex, 4> queryTree_;
 	std::unique_ptr<algorithm::Deformation> deformationSpace_;

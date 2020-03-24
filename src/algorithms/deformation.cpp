@@ -15,9 +15,9 @@ namespace algorithm {
 		typeMarks_(mesh_.add_vertex_property<VertexType>("v:typeMarks", VertexType::None)),
 		idx_(mesh_.add_vertex_property<int>("v:newIdx", -1)),
 		meshIdx_(mesh_.add_vertex_property<int>("v:meshIdx")),
-		smoothness_(mesh_.add_vertex_property<pmp::Scalar>("v:smoothness", 2.0)),
-		detailOffsets_(mesh_.add_vertex_property<pmp::Scalar>("v:detail", 0.0)),
-		lowResPositions_(mesh_.add_vertex_property<pmp::Point>("v:lowResPosition")),
+		smoothness_(mesh_.add_vertex_property<Scalar>("v:smoothness", 2.0)),
+		detailOffsets_(mesh_.add_vertex_property<Scalar>("v:detail", 0.0)),
+		lowResPositions_(mesh_.add_vertex_property<Point>("v:lowResPosition")),
 		laplacian_(mesh.n_vertices(), mesh.n_vertices()),
 		areaScale_(mesh.n_vertices()),
 		smoothnessScale_(mesh.n_vertices()),
@@ -61,10 +61,10 @@ namespace algorithm {
 		compute_laplace();
 		compute_higher_order();
 
-		implicit_smoothing(0.001);
+		implicit_smoothing(0.00001);
 
 		// update vertices now to not have them jump with the first modification
-		update_support_region();
+		//update_support_region();
 	}
 
 	void Deformation::reset_regions()
@@ -526,6 +526,9 @@ namespace algorithm {
 			lowResPositions_[v][1] = X(i, 1);
 			lowResPositions_[v][2] = X(i, 2);
 			const Normal n = SurfaceNormals::compute_vertex_normal(mesh_, v);
+			//double d = std::acos(pmp::dot(n, pmp::normalize(points[v] - lowResPositions_[v])));
+			//if (d > 0.1)
+			//	int brk = 42;
 			// signed distance from the plane n * (x-p) = 0
 			detailOffsets_[v] = pmp::dot(n, (points[v] - lowResPositions_[v]));
 		}

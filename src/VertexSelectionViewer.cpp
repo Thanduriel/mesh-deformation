@@ -160,6 +160,9 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 
 bool VertexSelectionViewer::load_mesh(const char* filename)
 {
+	// operator keeps mesh properties that should be released first
+	if (deformationSpace_) deformationSpace_.reset();
+
 	// load mesh
 	if (mesh_.read(filename))
 	{
@@ -260,7 +263,7 @@ Vertex VertexSelectionViewer::pick_vertex(int x, int y)
 	return vmin;
 }
 
-std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radius)
+std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radius, bool onlyConnected)
 {
 	std::vector<Vertex> vVector;
 
@@ -273,7 +276,51 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 		query.radius_   = radius;
 		query.radiusSq_ = radius*radius;
 		queryTree_.traverse(query);
-		vVector = std::move(query.verticesHit);
+
+		if (!onlyConnected)
+		{
+			vVector = std::move(query.verticesHit);
+		}
+		else if(query.verticesHit.size())
+		{
+			auto points = mesh_.get_vertex_property<Point>("v:point");
+
+			auto marks = mesh_.add_vertex_property<int>("v:tempMark", 0);
+			for (Vertex v : query.verticesHit) marks[v] = 1;
+
+			// find closest vertex
+			float minDistSq = std::numeric_limits<float>::max();
+			Vertex minV;
+			for (Vertex v : query.verticesHit)
+			{
+				const float d = sqrnorm(p - points[v]);
+				if (d < minDistSq) 
+				{
+					minV = v;
+					minDistSq = d;
+				}
+			}
+
+			vVector.push_back(minV);
+			marks[minV] = 0;
+			size_t cur = 0;
+			while (cur < vVector.size())
+			{
+				Vertex v = vVector[cur];
+				marks[v] = 0;
+
+				for (Vertex nv : mesh_.vertices(v))
+				{
+					if (marks[nv])
+					{
+						vVector.push_back(nv);
+						marks[nv] = 0;
+					}
+				}
+				++cur;
+			}
+			mesh_.remove_vertex_property(marks);
+		}
 	}
 
 	return vVector;
@@ -561,7 +608,7 @@ void VertexSelectionViewer::draw_on_mesh()
 	double x = 0;
 	double y = 0;
 	cursor_pos(x, y);
-	auto vVector = pick_vertex(x, y, brushSize_);
+	auto vVector = pick_vertex(x, y, brushSize_, false);
 
 	if (!vVector.empty())
 	{

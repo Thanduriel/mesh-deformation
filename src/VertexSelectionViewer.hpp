@@ -70,7 +70,10 @@ public:
 
 	pmp::Vertex pick_vertex(int x, int y);
 
-	std::vector<Vertex> pick_vertex(int x, int y, float radius);
+	// Picks all vertices in a radius around the position on the mesh.
+	// @param onlyConnected Starts with the closest vertex and adds only 
+	//                      those vertices connected to it within the sphere.
+	std::vector<Vertex> pick_vertex(int x, int y, float radius, bool onlyConnected = false);
 
 	void process_imgui() override;
 
@@ -96,8 +99,8 @@ private:
 		void process(const pmp::vec3& key, Vertex v);
 
 		pmp::vec3 center_;
-		double radius_;
-		double radiusSq_;
+		float radius_;
+		float radiusSq_;
 		std::vector<Vertex> verticesHit;
 	};
 
@@ -112,7 +115,7 @@ private:
 	const char* currentModifierItem_ = nullptr;
 	char fileNameBuffer_[512] = {};
 
-	util::SparseOctree<pmp::Vertex, 4> queryTree_;
+	util::Octree<pmp::Vertex, 4> queryTree_;
 	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;
 	ViewerMode viewerMode_;
@@ -120,7 +123,7 @@ private:
 	bool isMouseDown_ = false;
 	pmp::Normal translationNormal_;
 	pmp::Point translationPoint_;
-
+	
 	SurfaceColorMesh mesh_;
 	ModifierHandle meshHandle_;
 	pmp::vec3 pickPosition_;

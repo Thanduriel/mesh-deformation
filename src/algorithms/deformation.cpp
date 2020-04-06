@@ -8,8 +8,6 @@ namespace algorithm {
 
 	using namespace pmp;
 
-	using Triplet = Eigen::Triplet<double>;
-
 	Deformation::Deformation(SurfaceMesh& mesh)
 		: mesh_(mesh),
 		typeMarks_(mesh_.add_vertex_property<VertexType>("v:typeMarks", VertexType::None)),
@@ -17,6 +15,7 @@ namespace algorithm {
 		meshIdx_(mesh_.add_vertex_property<int>("v:meshIdx")),
 		smoothness_(mesh_.add_vertex_property<Scalar>("v:smoothness", 2.0)),
 		detailOffsets_(mesh_.add_vertex_property<Scalar>("v:detail", 0.0)),
+		detailVectors_(mesh_.add_vertex_property<pmp::Normal>("v:detailV")),
 		lowResPositions_(mesh_.add_vertex_property<Point>("v:lowResPosition")),
 		laplacian_(mesh.n_vertices(), mesh.n_vertices()),
 		areaScale_(mesh.n_vertices()),
@@ -34,6 +33,7 @@ namespace algorithm {
 		mesh_.remove_vertex_property(meshIdx_);
 		mesh_.remove_vertex_property(smoothness_);
 		mesh_.remove_vertex_property(detailOffsets_);
+		mesh_.remove_vertex_property(detailVectors_);
 		mesh_.remove_vertex_property(lowResPositions_);
 	}
 
@@ -49,6 +49,7 @@ namespace algorithm {
 		supportVertices_ = supportVertices;
 		handleVertices_ = handleVertices;
 
+		// distribute global and per region indicies
 		int index = 0;
 		for (Vertex v : supportVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Support; }
 		for (Vertex v : handleVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Handle; }
@@ -56,12 +57,14 @@ namespace algorithm {
 		compute_boundary_set(3);
 		for (Vertex v : boundaryVertices_) { idx_[v] = index++; }
 
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+
 		smoothnessScale_.setIdentity();
 
 		compute_laplace();
 		compute_higher_order();
 
-		implicit_smoothing(0.00001);
+		implicit_smoothing(0.00005);
 
 		// update vertices now to not have them jump with the first modification
 		//update_support_region();
@@ -146,7 +149,6 @@ namespace algorithm {
 	{
 		auto points = mesh_.get_vertex_property<Point>("v:point");
 
-		// find center point
 		Point p(0.f);
 		for (Vertex v : handleVertices_) p += points[v];
 		p /= handleVertices_.size();
@@ -201,7 +203,7 @@ namespace algorithm {
 		DenseMatrix X;
 		if (useBasisFunctions_)
 		{
-			Eigen::Matrix<double, 4, 3> f;
+			Eigen::Matrix<MatScalar, 4, 3> f;
 			for (int i = 0; i < 4; ++i)
 			{
 				f(i, 0) = affineFrame_[i][0];
@@ -423,7 +425,7 @@ namespace algorithm {
 		affineFrame_[3] = pmp::Point(0.0, 0.0, 1.0);
 
 
-		Eigen::Matrix4d f;
+		Eigen::Matrix<MatScalar, 4, 4> f;
 		f << 0.0, 0.0, 0.0, 1.0,
 			1.0, 0.0, 0.0, 1.0,
 			0.0, 1.0, 0.0, 1.0,
@@ -458,11 +460,16 @@ namespace algorithm {
 			for (Vertex v : supportVertices_) points[v] = lowResPositions_[v];
 			auto normals = mesh_.add_vertex_property<Normal>("v:normal");
 			for (Vertex v : supportVertices_)
+			{
+				auto& [b1, b2, b3] = local_frame(v);
+			//	normals[v] = b1 * detailVectors_[v][0] + b2 * detailVectors_[v][1] + b3 * detailVectors_[v][2];
 				normals[v] = SurfaceNormals::compute_vertex_normal(mesh_, v);
+			}
 
 			// apply offsets to restore details
 			for (Vertex v : supportVertices_)
 				points[v] = lowResPositions_[v] + normals[v] * detailOffsets_[v];
+			//	points[v] = lowResPositions_[v] + normals[v];
 
 			mesh_.remove_vertex_property(normals);
 		}
@@ -519,18 +526,41 @@ namespace algorithm {
 		Eigen::SimplicialLDLT<SparseMatrix> solver(areaScale1Inv_ * I - (timeStep * L1));
 		DenseMatrix X = solver.solve(areaScale1Inv_ * x1 + timeStep * L2 * x2);
 
+		for (Vertex v : supportVertices_)
+			lowResPositions_[v] = points[v];
 		for (size_t i = 0; i < supportVertices_.size(); ++i)
 		{
 			const Vertex v = supportVertices_[i];
-			lowResPositions_[v][0] = X(i, 0);
-			lowResPositions_[v][1] = X(i, 1);
-			lowResPositions_[v][2] = X(i, 2);
-			const Normal n = SurfaceNormals::compute_vertex_normal(mesh_, v);
-			//double d = std::acos(pmp::dot(n, pmp::normalize(points[v] - lowResPositions_[v])));
-			//if (d > 0.1)
-			//	int brk = 42;
-			// signed distance from the plane n * (x-p) = 0
-			detailOffsets_[v] = pmp::dot(n, (points[v] - lowResPositions_[v]));
+			points[v][0] = X(i, 0);
+			points[v][1] = X(i, 1);
+			points[v][2] = X(i, 2);
 		}
+		for (Vertex v : supportVertices_)
+		{
+			auto& [n, b2, b3] = local_frame(v);
+			const Normal d = lowResPositions_[v] - points[v];
+			detailVectors_[v] = pmp::Normal(dot(d, n), dot(d, b2), dot(d, b3));
+			//	double d = std::acos(pmp::dot(n, pmp::normalize(points[v] - lowResPositions_[v])));
+			//	if (d > 0.1)
+			//	std::cout << d / M_PI * 180.f << " | " << pmp::norm(points[v] - lowResPositions_[v]) << "\n";
+				//	int brk = 42;
+				// signed distance from the plane n * (x-p) = 0
+			detailOffsets_[v] = pmp::dot(n, (d));
+		}
+		for (Vertex v : supportVertices_)
+			std::swap(points[v], lowResPositions_[v]);
+	}
+
+	std::tuple<Normal, Normal, Normal> Deformation::local_frame(Vertex v) const
+	{
+		auto points = mesh_.get_vertex_property<Point>("v:point");
+
+		const Normal n = SurfaceNormals::compute_vertex_normal(mesh_, v);
+		const Halfedge h = *mesh_.halfedges(v).begin();
+		const Vertex vv = mesh_.to_vertex(h);
+		const Normal b2 = normalize(cross(n, points[vv] - points[v]));
+		const Normal b3 = normalize(cross(n, b2));
+
+		return { n,b2,b3 };
 	}
 }

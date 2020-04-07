@@ -87,6 +87,7 @@ private:
 	void draw_on_mesh();
 
 	vec2 compute_screenCoordinates(vec3 vec);
+	vec3 compute_WorldCoordinates(vec2 vec, float zf);
 
 	struct SphereQuery
 	{

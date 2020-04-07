@@ -121,7 +121,7 @@ bool ModifierHandle::is_scaleMode()
 	return false;
 }
 
-vec3 ModifierHandle::compute_move_vector(const mat4& modelviewProjection, float width, float heigth, vec2 motion)
+vec3 ModifierHandle::compute_move_vector(vec3 start, vec3 tarPos)
 {
 	vec3 moveAxis;
 	if (mode_ == EMode::Translation_X)
@@ -133,17 +133,10 @@ vec3 ModifierHandle::compute_move_vector(const mat4& modelviewProjection, float 
 	else
 		return vec3(0, 0, 0);
 
-	vec4 t = modelviewProjection * vec4(origin_, 1.0f);
-	t /= t[3];
-	vec2 tVec2 = vec2(t[0], -t[1]);
-	tVec2 += vec2(1, 1);
-	tVec2 = vec2(tVec2[0], tVec2[1]);
-	tVec2 = vec2(tVec2[0] * width * 0.5f, tVec2[1] * heigth * 0.5f);
+	vec3 directionToTarget = tarPos - start;
 
-	vec2 diff = mouseStartPos_ - tVec2;
-	float scalar = pmp::dot(motion, diff);
+	float scalar = dot(directionToTarget, moveAxis);
 	vec3 movement = moveAxis * scalar;
-
 	return movement;
 }
 
@@ -231,21 +224,25 @@ vec2 ModifierHandle::get_mouseStartPos()
 
 bool ModifierHandle::is_hit(const Ray& ray)
 {
+	remove_Selection();
 	if (is_translationMode())
 	{
 		if (is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_))
 		{
 			mode_ = EMode::Translation_X;
+			set_Selection(arrowMesh_LocalX_);
 			return true;
 		}
 		else if (is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_))
 		{
 			mode_ = EMode::Translation_Y;
+			set_Selection(arrowMesh_LocalY_);
 			return true;
 		}
 		else if (is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_))
 		{
 			mode_ = EMode::Translation_Z;
+			set_Selection(arrowMesh_LocalZ_);
 			return true;
 		}
 	}
@@ -254,16 +251,19 @@ bool ModifierHandle::is_hit(const Ray& ray)
 		if (is_hit(ray, modelMatrixInverseRotationX_, torusMesh_RotationX_))
 		{
 			mode_ = EMode::Rotation_X;
+			set_Selection(torusMesh_RotationX_);
 			return true;
 		}
 		else if (is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_))
 		{
 			mode_ = EMode::Rotation_Y;
+			set_Selection(torusMesh_RotationX_);
 			return true;
 		}
 		else if (is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_))
 		{
 			mode_ = EMode::Rotation_Z;
+			set_Selection(torusMesh_RotationX_);
 			return true;
 		}
 	}
@@ -272,15 +272,16 @@ bool ModifierHandle::is_hit(const Ray& ray)
 		if (is_hit(ray, modelMatrixScaleInverseX_, scaleMesh_ScaleX_))
 		{
 			mode_ = EMode::Scale_X;
+			set_Selection(scaleMesh_ScaleX_);
 			return true;
 		}
 		else if (is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_))
 		{
 			mode_ = EMode::Scale_Y;
+			set_Selection(scaleMesh_ScaleY_);
 			return true;
 		}
 	}
-
 
 	return false;
 }
@@ -342,6 +343,38 @@ bool ModifierHandle::is_hit(const Ray& ray, mat4 modelMatrixInverse, const Surfa
 	}
 
 	return false;
+}
+
+void ModifierHandle::set_Selection(SurfaceColorMesh& mesh)
+{
+	auto vProp = mesh.get_vertex_property<Color>("v:col");
+
+	for (Vertex v : mesh.vertices())
+		vProp[v] = Color(1.0f, 1.0f, 0.0f);
+
+	mesh.update_color_buffer();
+}
+
+void ModifierHandle::remove_Selection()
+{
+	remove_Selection(arrowMesh_LocalX_);
+	remove_Selection(arrowMesh_LocalY_);
+	remove_Selection(arrowMesh_LocalZ_);
+	remove_Selection(torusMesh_RotationX_);
+	remove_Selection(torusMesh_RotationY_);
+	remove_Selection(torusMesh_RotationZ_);
+	remove_Selection(scaleMesh_ScaleX_);
+	remove_Selection(scaleMesh_ScaleY_);
+}
+
+void ModifierHandle::remove_Selection(SurfaceColorMesh& mesh)
+{
+	auto vProp = mesh.get_vertex_property<Color>("v:col");
+
+	for (Vertex v : mesh.vertices())
+		vProp[v] = Color(0.0f, 0.0f, 0.0f);
+
+	mesh.update_color_buffer();
 }
 
 void ModifierHandle::precompute_intersection_structure()

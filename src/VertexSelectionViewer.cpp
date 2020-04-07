@@ -213,6 +213,10 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 			TrackballViewer::motion(xpos, ypos);
 		else if (isMouseDown_)
 			draw_on_mesh();
+		if (meshHandle_.is_hit(get_ray(xpos, ypos)) && viewerMode_ != ViewerMode::View)
+		{
+
+		}
 	}
 }
 
@@ -357,20 +361,21 @@ void VertexSelectionViewer::update_mesh()
 
 void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 {
-	vec2 currMousePos = vec2(xpos, ypos);
-	vec2 mouseMotion = currMousePos - vec2(last_point_2d_[0], last_point_2d_[1]);
-	float mouseMotionNorm = pmp::norm(mouseMotion);
-	vec2 midScreen = compute_screenCoordinates(meshHandle_.origin());
+	vec2 startPos = vec2(xpos, ypos);
+	vec2 mouseMotion = meshHandle_.get_mouseStartPos() - startPos;
 
 
-	if ((ypos > 0 || xpos > 0) && mouseMotionNorm > 0)
+	if ((ypos > 0 || xpos > 0) && norm(mouseMotion) > 0)
 	{
-		mouseMotion = vec2(mouseMotion[0], mouseMotion[1]);
-		vec3 movement = meshHandle_.compute_move_vector(projection_matrix_ * modelview_matrix_, width(), height(), mouseMotion);
+		vec3 vec3StartPos = compute_WorldCoordinates(meshHandle_.get_mouseStartPos(), 1.0f);
+		vec3 tarPos = compute_WorldCoordinates(startPos, 1.0f);
+		vec3 movement = meshHandle_.compute_move_vector(vec3StartPos, tarPos);
+
 		deformationSpace_->translate(movement);
 		translationPoint_ += movement;
 		last_point_2d_ = ivec2(xpos, ypos);
 		meshIsDirty_ |= MeshUpdate::Geometry;
+		meshHandle_.set_mouseStartPos(startPos);
 	}
 }
 
@@ -547,6 +552,32 @@ vec2 VertexSelectionViewer::compute_screenCoordinates(vec3 vec)
 	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
 
 	return tVec2;
+}
+
+vec3 VertexSelectionViewer::compute_WorldCoordinates(vec2 vec, float zf)
+{
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	float x = vec[0];
+	float y = vec[1];
+
+	// take into accout highDPI scaling
+	x *= high_dpi_scaling();
+	y *= high_dpi_scaling();
+
+	// in OpenGL y=0 is at the 'bottom'
+	y = viewport[3] - y;
+
+	const float xf = ((float)x - (float)viewport[0]) / ((float)viewport[2]) * 2.0f - 1.0f;
+	const float yf = ((float)y - (float)viewport[1]) / ((float)viewport[3]) * 2.0f - 1.0f;
+	//zf = zf * 2.0f - 1.0f;
+
+	mat4 mvp = projection_matrix_ * modelview_matrix_;
+	mat4 inv = inverse(mvp);
+	vec4 p = inv * vec4(xf, yf, zf, 1.0f);
+	p /= p[3];
+
+	return vec3(p[0], p[1], p[2]);
 }
 
 bool VertexSelectionViewer::SphereQuery::descend(const pmp::vec3& center, double size) const

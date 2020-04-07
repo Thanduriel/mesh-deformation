@@ -49,7 +49,7 @@ public:
 	bool is_rotationMode();
 	bool is_scaleMode();
 
-	vec3 compute_move_vector(const mat4& modelviewProjection, float width, float heigth, vec2 motion);
+	vec3 compute_move_vector(vec3 start, vec3 tarPos);
 	vec3 compute_rotation_vector();
 	vec3 origin();
 
@@ -64,6 +64,12 @@ private:
 	mat4 compute_modelViewMatrix(vec3 forward, mat4 scaleMatrix);
 
 	bool is_hit(const Ray& ray, mat4 modelMatrixInverse,const SurfaceColorMesh& mesh) const;
+
+	void set_Selection(SurfaceColorMesh& mesh);
+
+	void remove_Selection(SurfaceColorMesh & mesh);
+
+	void remove_Selection();
 
 	SurfaceColorMesh arrowMesh_LocalX_;
 	SurfaceColorMesh arrowMesh_LocalY_;

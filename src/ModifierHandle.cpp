@@ -121,7 +121,7 @@ bool ModifierHandle::is_scaleMode()
 	return false;
 }
 
-vec3 ModifierHandle::compute_move_vector(vec3 start, vec3 tarPos)
+vec3 ModifierHandle::compute_move_vector(float scalar)
 {
 	vec3 moveAxis;
 	if (mode_ == EMode::Translation_X)
@@ -133,11 +133,22 @@ vec3 ModifierHandle::compute_move_vector(vec3 start, vec3 tarPos)
 	else
 		return vec3(0, 0, 0);
 
-	vec3 directionToTarget = tarPos - start;
+	return moveAxis * scalar;
+}
 
-	float scalar = dot(directionToTarget, moveAxis);
-	vec3 movement = moveAxis * scalar;
-	return movement;
+vec3 ModifierHandle::compute_move_vector()
+{
+	vec3 moveAxis;
+	if (mode_ == EMode::Translation_X)
+		moveAxis = local_x_;
+	else if (mode_ == EMode::Translation_Y)
+		moveAxis = local_y_;
+	else if (mode_ == EMode::Translation_Z)
+		moveAxis = local_z_;
+	else
+		return vec3(0, 0, 0);
+
+	return origin_ + moveAxis;
 }
 
 vec3 ModifierHandle::compute_rotation_vector()
@@ -372,7 +383,7 @@ void ModifierHandle::remove_Selection(SurfaceColorMesh& mesh)
 	auto vProp = mesh.get_vertex_property<Color>("v:col");
 
 	for (Vertex v : mesh.vertices())
-		vProp[v] = Color(0.0f, 0.0f, 0.0f);
+		vProp[v] = Color(1.0f, 0.0f, 0.0f);
 
 	mesh.update_color_buffer();
 }

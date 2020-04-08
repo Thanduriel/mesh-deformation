@@ -39,25 +39,30 @@ namespace algorithm {
 		// Operator is ready for modifications to the vertices.
 		bool is_set() const;
 
-		// Applies the given transformation the handle vertices and updates the vertices in the support region.
+		// Applies the given transformation to the handle vertices and updates the vertices in the support region.
 		void translate(const pmp::Normal& translation);
 		void scale(pmp::Scalar scale);
 		void rotate(const pmp::Normal& axis, pmp::Scalar angle);
 
 		//TODO Comment
 		void reset_scale_origin();
+
+		void toggle_details();
 	private:
 		// matrix types in use
-		using SparseMatrix = Eigen::SparseMatrix<double>;
-		using SparseMatrixR = Eigen::SparseMatrix<double, Eigen::RowMajor>;
-		using DenseMatrix = Eigen::MatrixXd;
-		using DiagonalMatrix = Eigen::DiagonalMatrix<double, Eigen::Dynamic>;
+		using MatScalar = double; // scalar type for equation system solving
+		using SparseMatrix = Eigen::SparseMatrix<MatScalar>;
+		using SparseMatrixR = Eigen::SparseMatrix<MatScalar, Eigen::RowMajor>;
+		using DenseMatrix = Eigen::Matrix<MatScalar, Eigen::Dynamic, Eigen::Dynamic>;
+		using DiagonalMatrix = Eigen::DiagonalMatrix<MatScalar, Eigen::Dynamic>;
+		using Triplet = Eigen::Triplet<MatScalar>;
+
 
 		// Updates the positions of the support vertices with the current operator.
 		void update_support_region();
 		void compute_laplace();
 		void compute_higher_order();
-		// decomposes the matrix into parts assosiated with the free and fixed vertices
+		// Decomposes the matrix into parts assosiated with the free and fixed vertices.
 		// @param l1 Output target for the free vertices.
 		// @param l2 Output target for the fixed vertices.
 		void decompose_operator(const SparseMatrixR& lOperator, SparseMatrix& l1, SparseMatrix& l2) const;
@@ -69,13 +74,15 @@ namespace algorithm {
 		void update_details();
 		// Applies implicit smoothing to the support region and stores the results in lowResPositions_
 		void implicit_smoothing(pmp::Scalar timeStep);
+		// Computes a local frame based on the vertex normal and one edge.
+		std::tuple<pmp::Normal, pmp::Normal, pmp::Normal> local_frame(pmp::Vertex v) const;
 
 		// mesh and modifier regions
 		pmp::SurfaceMesh& mesh_;
 		std::vector<pmp::Vertex> supportVertices_;
 		std::vector<pmp::Vertex> handleVertices_;
 		std::vector<pmp::Vertex> boundaryVertices_;
-		
+
 		// additional vertex properties
 		enum struct VertexType { None, Support, Handle, Boundary };
 		pmp::VertexProperty<VertexType> typeMarks_;
@@ -83,17 +90,15 @@ namespace algorithm {
 		pmp::VertexProperty<int> meshIdx_;	//< indicies for all vertices
 		pmp::VertexProperty<pmp::Scalar> smoothness_;
 		pmp::VertexProperty<pmp::Scalar> detailOffsets_; //< details along normal directions of the high resolution mesh
+		pmp::VertexProperty<pmp::Normal> detailVectors_;
 		pmp::VertexProperty<pmp::Point> lowResPositions_; //< positions in the low resolution representation
 
-		using SparseMatrix = Eigen::SparseMatrix<double>;
-		using SparseMatrixR = Eigen::SparseMatrix<double, Eigen::RowMajor>;
-		using DenseMatrix = Eigen::MatrixXd;
-		using DiagonalMatrix = Eigen::DiagonalMatrix<double, Eigen::Dynamic>;
 		// laplace operator
 		SparseMatrixR laplacian_;
-		SparseMatrix laplace1_; //< support region
-		SparseMatrix laplace2_; //< boundary region 
+		SparseMatrix laplace1_; //< free vertices
+		SparseMatrix laplace2_; //< fixed vertices
 		DiagonalMatrix areaScale_;
+		DiagonalMatrix areaScale1Inv_; //< scale for only the free vertices
 		DiagonalMatrix smoothnessScale_;
 		Eigen::SparseLU<SparseMatrix> solver_; // SparseLU, SimplicialLLT, SimplicialLDLT
 		int laplaceOrder_;
@@ -110,5 +115,8 @@ namespace algorithm {
 		std::vector<pmp::Point> originScaleVertices_;
 		std::vector<pmp::Point> originScaleFrame_;
 		pmp::Point centerScale_;
+
+		// smoothing related
+		bool showDetails_ = true;
 	};
 }

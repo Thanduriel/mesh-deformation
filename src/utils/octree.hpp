@@ -6,13 +6,32 @@
 
 namespace util {
 
-	template<typename T, int BucketSize>
-	class SparseOctree
+	// A sparse octree for 3D points.
+	template<typename T, int BucketSize, typename FloatT = pmp::Scalar>
+	class Octree
 	{
 	public:
-		SparseOctree() : rootNode_(allocator_.create(Key(0,0,0),1.0) ) {}
+		using Key = pmp::Vector<FloatT, 3>;
 
-		void insert(const pmp::vec3& key, const T& el);
+		Octree() : rootNode_(allocator_.create(Key(0,0,0),1.0) ) {}
+
+		void insert(const Key& key, const T& el)
+		{
+			Key center = rootNode_->center_;
+			FloatT size = rootNode_->size_;
+			while (!is_in(key, center, size))
+			{
+				int index = child_index(center, key);
+				center -= CENTER_SHIFTS[index] * size;
+				size *= 2;
+
+				TreeNode* newRoot = allocator_.create(center, size);
+				newRoot->childs_[index] = rootNode_;
+				rootNode_ = newRoot;
+			}
+
+			rootNode_->insert(key, el, allocator_);
+		}
 		
 		// remove all elements
 		void clear()
@@ -35,16 +54,14 @@ namespace util {
 		}
 	
 	private:
-		using FloatT = double;
-		using Key = pmp::vec3;
-
+		
 		struct TreeNode
 		{
 			TreeNode(const Key& center, FloatT size) 
 				: center_{center}, size_(size), childs_{}, numElements_(0)
 			{}
 
-			void insert(const pmp::vec3& key, const T& el, BlockAllocator<TreeNode, 128>& alloc_)
+			void insert(const Key& key, const T& el, BlockAllocator<TreeNode, 128>& alloc_)
 			{
 				if (numElements_ < BucketSize)
 					data_[numElements_++] = std::pair{key, el};
@@ -98,28 +115,4 @@ namespace util {
 		BlockAllocator<TreeNode, 128> allocator_;
 		TreeNode* rootNode_;
 	};
-
-
-	// ********************************************************************* //
-	// implementation
-	// ********************************************************************* //
-
-	template<typename T, int BS>
-	void SparseOctree<T, BS>::insert(const pmp::vec3& key, const T& el)
-	{
-		Key center = rootNode_->center_;
-		FloatT size = rootNode_->size_;
-		while (!is_in(key, center, size))
-		{
-			int index = child_index(center, key);
-			center -= CENTER_SHIFTS[index] * size;
-			size *= 2;
-
-			TreeNode* newRoot = allocator_.create(center, size);
-			newRoot->childs_[index] = rootNode_;
-			rootNode_ = newRoot;
-		}
-
-		rootNode_->insert(key, el, allocator_);
-	}
 }

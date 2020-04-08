@@ -102,10 +102,10 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			vertexDrawingMode_ = VertexDrawingMode::None;
 			return;
 		case GLFW_KEY_SPACE:
-			viewerMode_ = ViewerMode::Translation;
-			vertexDrawingMode_ = VertexDrawingMode::None;
-			meshHandle_.set_translationMode();
-			init_modifier();
+			if (init_modifier())
+			{
+				set_viewer_mode(ViewerMode::Translation);
+			}
 			return;
 		}
 	}
@@ -114,25 +114,24 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		switch (key)
 		{
 		case GLFW_KEY_R:
-			viewerMode_ = ViewerMode::Rotation;
-			meshHandle_.set_rotationMode();
+			set_viewer_mode(ViewerMode::Rotation);
 			return;
 		case GLFW_KEY_3:
 			deformationSpace_->set_area_scaling(!deformationSpace_->get_area_scaling());
 			meshIsDirty_ |= MeshUpdate::Geometry;
 			return;
 		case GLFW_KEY_S:
-			viewerMode_ = ViewerMode::Scale;
-			meshHandle_.set_scaleMode();
+			set_viewer_mode(ViewerMode::Scale);
 			return;
 		case GLFW_KEY_SPACE:
-			viewerMode_ = ViewerMode::View;
-			deformationSpace_->reset_regions();
-			init_picking();
+			set_viewer_mode(ViewerMode::View);
 			return;
 		case GLFW_KEY_T:
-			viewerMode_ = ViewerMode::Translation;
-			meshHandle_.set_translationMode();
+			set_viewer_mode(ViewerMode::Translation);
+			return;
+		case GLFW_KEY_D:
+			deformationSpace_->toggle_details();
+			meshIsDirty_ |= MeshUpdate::Geometry;
 			return;
 		}
 	}
@@ -161,9 +160,14 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 
 bool VertexSelectionViewer::load_mesh(const char* filename)
 {
+	// operator keeps mesh properties that should be released first
+	if (deformationSpace_) deformationSpace_.reset();
+
 	// load mesh
 	if (mesh_.read(filename))
 	{
+		strcpy_s(fileNameBuffer_, filename);
+
 		// update scene center and bounds
 		BoundingBox bb = mesh_.bounds();
 		set_scene((vec3)bb.center(), 0.5 * bb.size());
@@ -263,7 +267,7 @@ Vertex VertexSelectionViewer::pick_vertex(int x, int y)
 	return vmin;
 }
 
-std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radius)
+std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radius, bool onlyConnected)
 {
 	std::vector<Vertex> vVector;
 
@@ -274,8 +278,53 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 		SphereQuery query;
 		query.center_ = p;
 		query.radius_ = radius;
+		query.radiusSq_ = radius * radius;
 		queryTree_.traverse(query);
-		vVector = std::move(query.verticesHit);
+
+		if (!onlyConnected)
+		{
+			vVector = std::move(query.verticesHit);
+		}
+		else if (query.verticesHit.size())
+		{
+			auto points = mesh_.get_vertex_property<Point>("v:point");
+
+			auto marks = mesh_.add_vertex_property<int>("v:tempMark", 0);
+			for (Vertex v : query.verticesHit) marks[v] = 1;
+
+			// find closest vertex
+			float minDistSq = std::numeric_limits<float>::max();
+			Vertex minV;
+			for (Vertex v : query.verticesHit)
+			{
+				const float d = sqrnorm(p - points[v]);
+				if (d < minDistSq)
+				{
+					minV = v;
+					minDistSq = d;
+				}
+			}
+
+			vVector.push_back(minV);
+			marks[minV] = 0;
+			size_t cur = 0;
+			while (cur < vVector.size())
+			{
+				Vertex v = vVector[cur];
+				marks[v] = 0;
+
+				for (Vertex nv : mesh_.vertices(v))
+				{
+					if (marks[nv])
+					{
+						vVector.push_back(nv);
+						marks[nv] = 0;
+					}
+				}
+				++cur;
+			}
+			mesh_.remove_vertex_property(marks);
+		}
 	}
 
 	return vVector;
@@ -283,20 +332,30 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 
 void VertexSelectionViewer::process_imgui()
 {
-	if (ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
+	ImGui::InputText("", fileNameBuffer_, 512);
+	if (ImGui::Button("open"))
 	{
-		constexpr const char* VERTEX_DRAW_NAMES[] = { "View [R]", "Clear [E]", "Handle [Q]", "Support [W]" };
-		static const char* currentItem = VERTEX_DRAW_NAMES[0];
+		if (load_mesh(fileNameBuffer_)) set_viewer_mode(ViewerMode::View);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("save"))
+	{
+		mesh_.write(fileNameBuffer_);
+	}
+
+	if (viewerMode_ == ViewerMode::View && ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		constexpr static const char* VERTEX_DRAW_NAMES[] = { "View [R]", "Clear [E]", "Handle [Q]", "Support [W]" };
 		// display possible changes from hotkeys
-		currentItem = VERTEX_DRAW_NAMES[static_cast<size_t>(vertexDrawingMode_)];
-		if (ImGui::BeginCombo("draw mode", currentItem))
+		currentVertexDrawItem_ = VERTEX_DRAW_NAMES[static_cast<size_t>(vertexDrawingMode_)];
+		if (ImGui::BeginCombo("draw mode", currentVertexDrawItem_))
 		{
 			for (int i = 0; i < 4; ++i)
 			{
-				const bool isSelected = currentItem == VERTEX_DRAW_NAMES[i];
+				const bool isSelected = currentVertexDrawItem_ == VERTEX_DRAW_NAMES[i];
 				if (ImGui::Selectable(VERTEX_DRAW_NAMES[i], isSelected))
 				{
-					currentItem = VERTEX_DRAW_NAMES[i];
+					currentVertexDrawItem_ = VERTEX_DRAW_NAMES[i];
 					vertexDrawingMode_ = static_cast<VertexDrawingMode>(i);
 				}
 				if (isSelected)
@@ -305,6 +364,7 @@ void VertexSelectionViewer::process_imgui()
 			ImGui::EndCombo();
 		}
 
+		// todo: move this information to a better place?
 		if (viewerMode_ != ViewerMode::View)
 		{
 			ImGui::BulletText("X: Select local x-axis");
@@ -316,8 +376,27 @@ void VertexSelectionViewer::process_imgui()
 		const BoundingBox bb = mesh_.bounds();
 		ImGui::SliderFloat("brush size", &brushSize_, 0.0001, bb.size() * 0.5);
 	}
-	if (deformationSpace_->is_set() && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
+	if (viewerMode_ != ViewerMode::View && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		constexpr static const char* MODIFIER_NAMES[] = { "Translate [T]", "Rotate [R]", "Scale [S]" };
+		// display possible changes from hotkeys
+		currentModifierItem_ = MODIFIER_NAMES[static_cast<size_t>(viewerMode_) - 1];
+		if (ImGui::BeginCombo("modifier", currentModifierItem_))
+		{
+			for (int i = 0; i < 3; ++i)
+			{
+				const bool isSelected = currentModifierItem_ == MODIFIER_NAMES[i];
+				if (ImGui::Selectable(MODIFIER_NAMES[i], isSelected))
+				{
+					currentModifierItem_ = MODIFIER_NAMES[i];
+					set_viewer_mode(static_cast<ViewerMode>(i + 1));
+				}
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+
 		if (ImGui::SliderInt("Order", &operatorOrder_, 1, 3))
 		{
 			deformationSpace_->set_order(operatorOrder_);
@@ -362,14 +441,19 @@ void VertexSelectionViewer::update_mesh()
 void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 {
 	vec2 startPos = vec2(xpos, ypos);
-	vec2 mouseMotion = meshHandle_.get_mouseStartPos() - startPos;
-
+	vec2 mouseMotion = startPos - meshHandle_.get_mouseStartPos();
 
 	if ((ypos > 0 || xpos > 0) && norm(mouseMotion) > 0)
 	{
-		vec3 vec3StartPos = compute_WorldCoordinates(meshHandle_.get_mouseStartPos(), 1.0f);
-		vec3 tarPos = compute_WorldCoordinates(startPos, 1.0f);
-		vec3 movement = meshHandle_.compute_move_vector(vec3StartPos, tarPos);
+		vec2 originScreenCord = compute_screenCoordinates(meshHandle_.origin());
+		vec2 moveScreen = compute_screenCoordinates(meshHandle_.compute_move_vector());
+		vec2 movementScreen = moveScreen - originScreenCord;
+		movementScreen[1] *= -1;
+		float ratio = 1.0f / norm(movementScreen);
+		movementScreen.normalize();
+		float scalar = ratio * dot(movementScreen, mouseMotion);
+
+		vec3 movement = meshHandle_.compute_move_vector(scalar);
 
 		deformationSpace_->translate(movement);
 		translationPoint_ += movement;
@@ -480,7 +564,7 @@ Ray VertexSelectionViewer::get_ray(int x, int y)
 
 }
 
-void VertexSelectionViewer::init_modifier()
+bool VertexSelectionViewer::init_modifier()
 {
 	auto points = mesh_.get_vertex_property<Point>("v:point");
 	auto colors = mesh_.get_vertex_property<Color>("v:col");
@@ -505,6 +589,8 @@ void VertexSelectionViewer::init_modifier()
 		}
 	}
 
+	if (!supportVertices.size() || !handleVertices.size()) return false;
+
 	translationPoint_ = handlePoint / pointIndex;
 	normal.normalize();
 	translationNormal_ = normal;
@@ -512,9 +598,9 @@ void VertexSelectionViewer::init_modifier()
 	deformationSpace_->set_regions(supportVertices, handleVertices);
 
 	meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
-	viewerMode_ = ViewerMode::Translation;
-	meshHandle_.set_translationMode();
 	meshIsDirty_ |= MeshUpdate::Geometry;
+
+	return true;
 }
 
 void VertexSelectionViewer::init_picking()
@@ -532,7 +618,7 @@ void VertexSelectionViewer::draw_on_mesh()
 	double x = 0;
 	double y = 0;
 	cursor_pos(x, y);
-	auto vVector = pick_vertex(x, y, brushSize_);
+	auto vVector = pick_vertex(x, y, brushSize_, false);
 
 	if (!vVector.empty())
 	{
@@ -552,6 +638,33 @@ vec2 VertexSelectionViewer::compute_screenCoordinates(vec3 vec)
 	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
 
 	return tVec2;
+}
+
+void VertexSelectionViewer::set_viewer_mode(ViewerMode mode)
+{
+	if (mode == viewerMode_) return;
+
+	if (viewerMode_ == ViewerMode::View)
+		vertexDrawingMode_ = VertexDrawingMode::None;
+
+	switch (mode)
+	{
+	case ViewerMode::Rotation:
+		meshHandle_.set_rotationMode();
+		break;
+	case ViewerMode::Scale:
+		meshHandle_.set_scaleMode();
+		break;
+	case ViewerMode::Translation:
+		meshHandle_.set_translationMode();
+		break;
+	case ViewerMode::View:
+		deformationSpace_->reset_regions();
+		init_picking();
+		break;
+	}
+
+	viewerMode_ = mode;
 }
 
 vec3 VertexSelectionViewer::compute_WorldCoordinates(vec2 vec, float zf)
@@ -590,6 +703,6 @@ bool VertexSelectionViewer::SphereQuery::descend(const pmp::vec3& center, double
 
 void VertexSelectionViewer::SphereQuery::process(const pmp::vec3& key, Vertex v)
 {
-	if (sqrnorm(key - center_) < radius_*radius_)
+	if (sqrnorm(key - center_) < radiusSq_)
 		verticesHit.push_back(v);
 }

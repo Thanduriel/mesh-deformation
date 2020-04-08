@@ -49,7 +49,9 @@ public:
 	bool is_rotationMode();
 	bool is_scaleMode();
 
-	vec3 compute_move_vector(vec3 start, vec3 tarPos);
+	vec3 compute_move_vector(float scalar);
+
+	vec3 compute_move_vector();
 	vec3 compute_rotation_vector();
 	vec3 origin();
 

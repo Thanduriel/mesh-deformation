@@ -70,7 +70,10 @@ public:
 
 	pmp::Vertex pick_vertex(int x, int y);
 
-	std::vector<Vertex> pick_vertex(int x, int y, float radius);
+	// Picks all vertices in a radius around the position on the mesh.
+	// @param onlyConnected Starts with the closest vertex and adds only 
+	//                      those vertices connected to it within the sphere.
+	std::vector<Vertex> pick_vertex(int x, int y, float radius, bool onlyConnected = false);
 
 	void process_imgui() override;
 
@@ -82,9 +85,11 @@ private:
 	void translationHandle(float xpos, float ypos);
 	void rotationHandle(float xpos, float ypos);
 	void scaleHandle(float xpos, float ypos);
-	void init_modifier();
+	// @return Whether the current colored areas are valid.
+	bool init_modifier();
 	void init_picking();
 	void draw_on_mesh();
+	void set_viewer_mode(ViewerMode mode);
 
 	vec2 compute_screenCoordinates(vec3 vec);
 	vec3 compute_WorldCoordinates(vec2 vec, float zf);
@@ -95,18 +100,23 @@ private:
 		void process(const pmp::vec3& key, Vertex v);
 
 		pmp::vec3 center_;
-		double radius_;
+		float radius_;
+		float radiusSq_;
 		std::vector<Vertex> verticesHit;
 	};
 
+	// gui options
 	VertexDrawingMode vertexDrawingMode_ = VertexDrawingMode::None;
 	float brushSize_;
 	int operatorOrder_ = 3;
 	float smoothnessHandle_ = 2.f;
 	float smoothnessBoundary_ = 2.f;
 	bool useAreaScaling_ = false;
-	util::SparseOctree<pmp::Vertex, 4> queryTree_;
+	const char* currentVertexDrawItem_ = nullptr;
+	const char* currentModifierItem_ = nullptr;
+	char fileNameBuffer_[512] = {};
 
+	util::Octree<pmp::Vertex, 4> queryTree_;
 	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;
 	ViewerMode viewerMode_;
@@ -114,7 +124,7 @@ private:
 	bool isMouseDown_ = false;
 	pmp::Normal translationNormal_;
 	pmp::Point translationPoint_;
-
+	
 	SurfaceColorMesh mesh_;
 	ModifierHandle meshHandle_;
 	pmp::vec3 pickPosition_;

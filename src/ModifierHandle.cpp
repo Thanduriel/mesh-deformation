@@ -358,12 +358,15 @@ bool ModifierHandle::is_hit(const Ray& ray, mat4 modelMatrixInverse, const Surfa
 
 void ModifierHandle::set_Selection(SurfaceColorMesh& mesh)
 {
-	auto vProp = mesh.get_vertex_property<Color>("v:col");
+	if (selectionMeshes_.find(&mesh) == selectionMeshes_.end())
+	{
+		auto vProp = mesh.get_vertex_property<Color>("v:col");
 
-	for (Vertex v : mesh.vertices())
-		vProp[v] = Color(1.0f, 1.0f, 0.0f);
-
-	mesh.update_color_buffer();
+		for (Vertex v : mesh.vertices())
+			vProp[v] = Color(1.0f, 1.0f, 0.0f);
+		selectionMeshes_.insert(&mesh);
+		mesh.update_color_buffer();
+	}
 }
 
 void ModifierHandle::remove_Selection()
@@ -380,12 +383,16 @@ void ModifierHandle::remove_Selection()
 
 void ModifierHandle::remove_Selection(SurfaceColorMesh& mesh)
 {
-	auto vProp = mesh.get_vertex_property<Color>("v:col");
+	if (selectionMeshes_.find(&mesh) != selectionMeshes_.end())
+	{
+		auto vProp = mesh.get_vertex_property<Color>("v:col");
 
-	for (Vertex v : mesh.vertices())
-		vProp[v] = Color(1.0f, 0.0f, 0.0f);
+		for (Vertex v : mesh.vertices())
+			vProp[v] = Color(1.0f, 0.0f, 0.0f);
 
-	mesh.update_color_buffer();
+		mesh.update_color_buffer();
+		selectionMeshes_.erase(&mesh);
+	}
 }
 
 void ModifierHandle::precompute_intersection_structure()

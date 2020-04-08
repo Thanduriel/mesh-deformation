@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include <SurfaceColorMesh.hpp>
 #include <memory>
+#include <unordered_set>
 
 namespace algorithm {
 	class Deformation;
@@ -112,6 +113,9 @@ private:
 	vec3 local_z_;
 
 	vec2 mouseStartPos_;
+	
+	std::unordered_set<SurfaceColorMesh*> selectionMeshes_;
+	std::unordered_set<SurfaceColorMesh*> updateMeshes_;
 
 	EMode mode_;
 };

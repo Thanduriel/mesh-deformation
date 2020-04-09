@@ -446,9 +446,9 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 	if ((ypos > 0 || xpos > 0) && norm(mouseMotion) > 0)
 	{
 		const Ray ray = get_ray(xpos, ypos);
-		const vec3 normal = meshHandle_.get_local_x();
-		aHuto res = algorithm::intersect(ray, meshandle_.origin(), normal);
-		if(!res) res = algorithm::intersect(ray, meshHandle_.origin(), meshHandle_.get_local_y());
+		const std::vector<vec3> normals = meshHandle_.get_active_normal_axes();
+		auto res = algorithm::intersect(ray, meshHandle_.origin(), normals[0]);
+		if (!res) res = algorithm::intersect(ray, meshHandle_.origin(), normals[1]);
 		const vec3 hitP = ray.origin + ray.direction * res.value();
 		const vec3 dir = hitP - meshHandle_.origin();
 
@@ -556,7 +556,7 @@ Ray VertexSelectionViewer::get_ray(int x, int y)
 	// far plane
 	vec4 p = inv * vec4(xf, yf, 1.f, 1.0f);
 	// near plane
-	vec4 origin = inv * vec4(xf, yf, 0.f, 1.0f);
+	vec4 origin = inv * vec4(xf, yf, -1.f, 1.0f);
 	p /= p[3];
 	origin /= origin[3];
 	const vec4 dir = p - origin;

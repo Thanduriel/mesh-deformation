@@ -77,7 +77,7 @@ namespace algorithm {
 	std::optional<float> intersect(const Ray& ray, const vec3& p0, const vec3& n)
 	{
 		const float den = dot(ray.direction, n);
-		if (den < std::numeric_limits<float>::epsilon() * 16.f)
+		if (std::abs(den) < std::numeric_limits<float>::epsilon() * 16.f)
 			return std::nullopt;
 
 		return dot(p0 - ray.origin, n) / den;

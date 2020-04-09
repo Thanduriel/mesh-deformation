@@ -121,18 +121,43 @@ bool ModifierHandle::is_scaleMode()
 	return false;
 }
 
-vec3 ModifierHandle::compute_move_vector(float scalar)
+vec3 ModifierHandle::get_active_translation_axis()
 {
-	vec3 moveAxis;
 	if (mode_ == EMode::Translation_X)
-		moveAxis = local_x_;
+		return local_x_;
 	else if (mode_ == EMode::Translation_Y)
-		moveAxis = local_y_;
+		return local_y_;
 	else if (mode_ == EMode::Translation_Z)
-		moveAxis = local_z_;
+		return local_z_;
 	else
 		return vec3(0, 0, 0);
+}
 
+std::vector<vec3> ModifierHandle::get_active_normal_axes()
+{
+	std::vector<vec3> result;
+	if (mode_ == EMode::Translation_X)
+	{
+		result.push_back(local_y_);
+		result.push_back(local_z_);
+	}
+	else if (mode_ == EMode::Translation_Y)
+	{
+		result.push_back(local_z_);
+		result.push_back(local_x_);
+	}
+	else if (mode_ == EMode::Translation_Z)
+	{
+		result.push_back(local_x_);
+		result.push_back(local_y_);
+	}
+
+	return result;
+}
+
+vec3 ModifierHandle::compute_move_vector(float scalar)
+{
+	vec3 moveAxis = get_active_translation_axis();
 	return moveAxis * scalar;
 }
 

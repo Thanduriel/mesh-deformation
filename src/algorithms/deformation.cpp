@@ -458,20 +458,18 @@ namespace algorithm {
 		{
 			// compute new normals of the low resolution mesh
 			for (Vertex v : supportVertices_) points[v] = lowResPositions_[v];
-			auto normals = mesh_.add_vertex_property<Normal>("v:normal");
+			auto displacements = mesh_.add_vertex_property<Normal>("v:displacement");
 			for (Vertex v : supportVertices_)
 			{
 				auto& [b1, b2, b3] = local_frame(v);
-			//	normals[v] = b1 * detailVectors_[v][0] + b2 * detailVectors_[v][1] + b3 * detailVectors_[v][2];
-				normals[v] = SurfaceNormals::compute_vertex_normal(mesh_, v);
+				displacements[v] = b1 * detailVectors_[v][0] + b2 * detailVectors_[v][1] + b3 * detailVectors_[v][2];
 			}
 
 			// apply offsets to restore details
 			for (Vertex v : supportVertices_)
-				points[v] = lowResPositions_[v] + normals[v] * detailOffsets_[v];
-			//	points[v] = lowResPositions_[v] + normals[v];
+				points[v] = lowResPositions_[v] + displacements[v];
 
-			mesh_.remove_vertex_property(normals);
+			mesh_.remove_vertex_property(displacements);
 		}
 		else
 		{
@@ -540,12 +538,6 @@ namespace algorithm {
 			auto& [n, b2, b3] = local_frame(v);
 			const Normal d = lowResPositions_[v] - points[v];
 			detailVectors_[v] = pmp::Normal(dot(d, n), dot(d, b2), dot(d, b3));
-			//	double d = std::acos(pmp::dot(n, pmp::normalize(points[v] - lowResPositions_[v])));
-			//	if (d > 0.1)
-			//	std::cout << d / M_PI * 180.f << " | " << pmp::norm(points[v] - lowResPositions_[v]) << "\n";
-				//	int brk = 42;
-			// signed distance from the plane n * (x-p) = 0
-			detailOffsets_[v] = pmp::dot(n, d);
 		}
 		for (Vertex v : supportVertices_)
 			std::swap(points[v], lowResPositions_[v]);

@@ -231,7 +231,7 @@ void VertexSelectionViewer::mouse(int button, int action, int mods)
 		&& meshHandle_.is_hit(get_ray(last_point_2d_[0], last_point_2d_[1])))
 	{
 		isVertexTranslationMouseActive_ = true;
-		meshHandle_.set_mouseStartPos(vec2(last_point_2d_[0], last_point_2d_[1]));
+		meshHandle_.set_mouseStartPos(vec2(last_point_2d_[0], height() - last_point_2d_[1]));
 		deformationSpace_->reset_scale_origin();
 	}
 	else
@@ -440,18 +440,19 @@ void VertexSelectionViewer::update_mesh()
 
 void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 {
-	vec2 startPos = vec2(xpos, ypos);
+	vec2 startPos = vec2(xpos, height() - ypos);
 	vec2 mouseMotion = startPos - meshHandle_.get_mouseStartPos();
 
 	if ((ypos > 0 || xpos > 0) && norm(mouseMotion) > 0)
 	{
-		vec2 originScreenCord = compute_screenCoordinates(meshHandle_.origin());
-		vec2 moveScreen = compute_screenCoordinates(meshHandle_.compute_move_vector());
-		vec2 movementScreen = moveScreen - originScreenCord;
-		movementScreen[1] *= -1;
-		float ratio = 1.0f / norm(movementScreen);
-		movementScreen.normalize();
-		float scalar = ratio * dot(movementScreen, mouseMotion);
+		const Ray ray = get_ray(xpos, ypos);
+		const vec3 normal = meshHandle_.get_local_x();
+		aHuto res = algorithm::intersect(ray, meshandle_.origin(), normal);
+		if(!res) res = algorithm::intersect(ray, meshHandle_.origin(), meshHandle_.get_local_y());
+		const vec3 hitP = ray.origin + ray.direction * res.value();
+		const vec3 dir = hitP - meshHandle_.origin();
+
+		float scalar = dot(dir, meshHandle_.compute_move_vector(1.f));
 
 		vec3 movement = meshHandle_.compute_move_vector(scalar);
 
@@ -633,7 +634,7 @@ vec2 VertexSelectionViewer::compute_screenCoordinates(vec3 vec)
 {
 	vec4 t = projection_matrix_ * modelview_matrix_ * vec4(vec, 1.0f);
 	t /= t[3];
-	vec2 tVec2 = vec2(t[0], -t[1]);
+	vec2 tVec2 = vec2(t[0], t[1]);
 	tVec2 += vec2(1, 1);
 	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
 

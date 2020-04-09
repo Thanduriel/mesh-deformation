@@ -1,4 +1,5 @@
 #include "intersection.hpp"
+#include <limits>
 
 namespace algorithm {
 
@@ -25,7 +26,7 @@ namespace algorithm {
 
 	inline int float_to_int_cast(float f)
 	{
-		assert(sizeof(float) == sizeof(int));
+		static_assert(sizeof(float) == sizeof(int));
 		int res;
 		memcpy(&res, &f, sizeof(float));
 		return res;
@@ -71,5 +72,14 @@ namespace algorithm {
 		return intersect(ray.origin, ray.direction, &dist, maxDist, triangle)
 			? std::optional<float>(dist) : std::nullopt;
 
+	}
+
+	std::optional<float> intersect(const Ray& ray, const vec3& p0, const vec3& n)
+	{
+		const float den = dot(ray.direction, n);
+		if (den < std::numeric_limits<float>::epsilon() * 16.f)
+			return std::nullopt;
+
+		return dot(p0 - ray.origin, n) / den;
 	}
 }

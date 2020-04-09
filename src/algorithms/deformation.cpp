@@ -544,8 +544,8 @@ namespace algorithm {
 			//	if (d > 0.1)
 			//	std::cout << d / M_PI * 180.f << " | " << pmp::norm(points[v] - lowResPositions_[v]) << "\n";
 				//	int brk = 42;
-				// signed distance from the plane n * (x-p) = 0
-			detailOffsets_[v] = pmp::dot(n, (d));
+			// signed distance from the plane n * (x-p) = 0
+			detailOffsets_[v] = pmp::dot(n, d);
 		}
 		for (Vertex v : supportVertices_)
 			std::swap(points[v], lowResPositions_[v]);

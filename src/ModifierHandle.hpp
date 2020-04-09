@@ -50,6 +50,10 @@ public:
 	bool is_rotationMode();
 	bool is_scaleMode();
 
+	vec3 get_local_x() const { return local_x_; }
+	vec3 get_local_y() const { return local_y_; }
+	vec3 get_local_z() const { return local_z_; }
+
 	vec3 compute_move_vector(float scalar);
 
 	vec3 compute_move_vector();

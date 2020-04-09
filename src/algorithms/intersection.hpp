@@ -22,6 +22,7 @@ namespace algorithm {
 		pmp::vec3 n2; float d2 = 0.f;
 	};
 
+	// Ray triangle intersection.
 	std::optional<float> intersect(const Ray& ray, 
 		const pmp::vec3& p0, 
 		const pmp::vec3& p1, 
@@ -31,4 +32,8 @@ namespace algorithm {
 	std::optional<float> intersect(const Ray& ray,
 		const IntersectionTriangle& _triangle,
 		float maxDist);
+
+	std::optional<float> intersect(const Ray& ray,
+		const pmp::vec3& p0,
+		const pmp::vec3& n);
 }

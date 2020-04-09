@@ -450,7 +450,8 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 		auto res = algorithm::intersect(ray, meshHandle_.origin(), normals[0]);
 		if (!res) res = algorithm::intersect(ray, meshHandle_.origin(), normals[1]);
 		const vec3 hitP = ray.origin + ray.direction * res.value();
-		const vec3 dir = hitP - meshHandle_.origin();
+		std::cout << meshHandle_.get_last_hit_point() << std::endl;
+		const vec3 dir = hitP - meshHandle_.get_last_hit_point();
 
 		float scalar = dot(dir, meshHandle_.compute_move_vector(1.f));
 

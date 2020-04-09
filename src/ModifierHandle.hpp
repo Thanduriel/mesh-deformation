@@ -53,6 +53,8 @@ public:
 	vec3 get_active_translation_axis();
 	std::vector<vec3> get_active_normal_axes();
 
+	vec3 get_last_hit_point();
+
 	vec3 compute_move_vector(float scalar);
 
 	vec3 compute_move_vector();
@@ -69,7 +71,7 @@ private:
 	void precompute_modelViewMatrix();
 	mat4 compute_modelViewMatrix(vec3 forward, mat4 scaleMatrix);
 
-	bool is_hit(const Ray& ray, mat4 modelMatrixInverse,const SurfaceColorMesh& mesh) const;
+	std::optional<float> is_hit(const Ray& ray, mat4 modelMatrixInverse,const SurfaceColorMesh& mesh) const;
 
 	void set_Selection(SurfaceColorMesh& mesh);
 
@@ -114,6 +116,8 @@ private:
 	vec3 local_x_;
 	vec3 local_y_;
 	vec3 local_z_;
+
+	vec3 last_hit_point_;
 
 	vec2 mouseStartPos_;
 	

@@ -155,6 +155,11 @@ std::vector<vec3> ModifierHandle::get_active_normal_axes()
 	return result;
 }
 
+vec3 ModifierHandle::get_last_hit_point()
+{
+	return last_hit_point_;
+}
+
 vec3 ModifierHandle::compute_move_vector(float scalar)
 {
 	vec3 moveAxis = get_active_translation_axis();
@@ -204,7 +209,10 @@ void ModifierHandle::init_local_coordinate_system(mat4 modelview, vec3 normal)
 void ModifierHandle::set_origin(const vec3& origin, const vec3& normal)
 {
 	vec3 normalNormalized = normalize(normal) * 0.03f;
-	origin_ = origin + normalNormalized;
+	vec3 newOrigin = origin + normalNormalized;
+	vec3 dist = newOrigin - origin_;
+	last_hit_point_ += dist;
+	origin_ = newOrigin;
 
 	precompute_modelViewMatrix();
 }
@@ -261,65 +269,67 @@ vec2 ModifierHandle::get_mouseStartPos()
 bool ModifierHandle::is_hit(const Ray& ray)
 {
 	remove_Selection();
+
+	std::optional<float> rayResult = std::nullopt;
+
 	if (is_translationMode())
 	{
-		if (is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_))
+		if (rayResult = is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_))
 		{
 			mode_ = EMode::Translation_X;
 			set_Selection(arrowMesh_LocalX_);
-			return true;
 		}
-		else if (is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_))
+		else if (rayResult = is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_))
 		{
 			mode_ = EMode::Translation_Y;
 			set_Selection(arrowMesh_LocalY_);
-			return true;
 		}
-		else if (is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_))
+		else if (rayResult = is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_))
 		{
 			mode_ = EMode::Translation_Z;
 			set_Selection(arrowMesh_LocalZ_);
-			return true;
 		}
 	}
 	else if (is_rotationMode())
 	{
-		if (is_hit(ray, modelMatrixInverseRotationX_, torusMesh_RotationX_))
+		if (rayResult = is_hit(ray, modelMatrixInverseRotationX_, torusMesh_RotationX_))
 		{
 			mode_ = EMode::Rotation_X;
 			set_Selection(torusMesh_RotationX_);
-			return true;
 		}
-		else if (is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_))
+		else if (rayResult = is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_))
 		{
 			mode_ = EMode::Rotation_Y;
 			set_Selection(torusMesh_RotationX_);
-			return true;
 		}
-		else if (is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_))
+		else if (rayResult = is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_))
 		{
 			mode_ = EMode::Rotation_Z;
 			set_Selection(torusMesh_RotationX_);
-			return true;
 		}
 	}
 	else if (is_scaleMode())
 	{
-		if (is_hit(ray, modelMatrixScaleInverseX_, scaleMesh_ScaleX_))
+		if (rayResult = is_hit(ray, modelMatrixScaleInverseX_, scaleMesh_ScaleX_))
 		{
 			mode_ = EMode::Scale_X;
 			set_Selection(scaleMesh_ScaleX_);
-			return true;
 		}
-		else if (is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_))
+		else if (rayResult = is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_))
 		{
 			mode_ = EMode::Scale_Y;
 			set_Selection(scaleMesh_ScaleY_);
-			return true;
 		}
 	}
 
-	return false;
+
+	if (rayResult)
+	{
+		last_hit_point_ = ray.origin + ray.direction * rayResult.value();
+		return true;
+	}
+	else
+		return false;
 }
 
 void ModifierHandle::precompute_modelViewMatrix()
@@ -360,7 +370,7 @@ mat4 ModifierHandle::compute_modelViewMatrix(vec3 forward, mat4 scaleMatrix)
 	return translation_matrix(origin_) * transpose(rotation_matrix(cross(forwardN, defForward), angle)) * scaleMatrix;
 }
 
-bool ModifierHandle::is_hit(const Ray& ray, mat4 modelMatrixInverse, const SurfaceColorMesh& mesh) const
+std::optional<float> ModifierHandle::is_hit(const Ray& ray, mat4 modelMatrixInverse, const SurfaceColorMesh& mesh) const
 {
 	Ray localRay;
 	const vec4 origin = modelMatrixInverse * pmp::vec4(ray.origin, 1.f);
@@ -372,13 +382,14 @@ bool ModifierHandle::is_hit(const Ray& ray, mat4 modelMatrixInverse, const Surfa
 
 	for (Face f : mesh.faces())
 	{
-		if (algorithm::intersect(localRay, triangles[f], 10000.f))
+		auto scalar = algorithm::intersect(localRay, triangles[f], 10000.f);
+		if (scalar)
 		{
-			return true;
+			return scalar;
 		}
 	}
 
-	return false;
+	return std::nullopt;
 }
 
 void ModifierHandle::set_Selection(SurfaceColorMesh& mesh)

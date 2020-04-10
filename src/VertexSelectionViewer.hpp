@@ -79,12 +79,16 @@ public:
 
 	void update_mesh();
 
+	void scroll(double, double yoffset) override;
+
 	// Compute ray going through a screen position.
 	Ray get_ray(int x, int y);
 private:
 	void translationHandle(float xpos, float ypos);
 	void rotationHandle(float xpos, float ypos);
 	void scaleHandle(float xpos, float ypos);
+	void setHandleOrigin();
+	void setHandleScale();
 	// @return Whether the current colored areas are valid.
 	bool init_modifier();
 	void init_picking();

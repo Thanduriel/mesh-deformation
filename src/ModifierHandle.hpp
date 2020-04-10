@@ -63,6 +63,10 @@ public:
 
 	void init_local_coordinate_system(mat4 modelview, vec3 normal);
 
+	void set_origin(const vec3 & origin);
+
+	void set_scale(float scale);
+
 	bool is_hit(const Ray& ray);
 private:
 	void precompute_intersection_structure();
@@ -116,6 +120,8 @@ private:
 	vec3 local_x_;
 	vec3 local_y_;
 	vec3 local_z_;
+
+	vec3 handleNormal;
 
 	vec3 last_hit_point_;
 

@@ -431,11 +431,23 @@ void VertexSelectionViewer::update_mesh()
 
 	if (viewerMode_ != ViewerMode::View)
 	{
-		meshHandle_.set_origin(translationPoint_, translationNormal_);
+		setHandleOrigin();
+		setHandleScale();
 	}
 
 	// re-compute face and vertex normals
 	mesh_.update_opengl_buffers();
+}
+
+void VertexSelectionViewer::scroll(double /*xoffset*/, double yoffset)
+{
+	float d = -(float)yoffset * 0.12 * radius_;
+#ifdef __EMSCRIPTEN__
+	d *= 0.5; // scrolling in browser is faster
+#endif
+	translate(vec3(0.0, 0.0, d));
+	setHandleScale();
+	setHandleOrigin();
 }
 
 void VertexSelectionViewer::translationHandle(float xpos, float ypos)
@@ -537,6 +549,24 @@ void VertexSelectionViewer::scaleHandle(float xpos, float ypos)
 	}
 }
 
+void VertexSelectionViewer::setHandleOrigin()
+{
+	vec4 mc(center_, 1.0);
+	vec4 ec = modelview_matrix_ * mc;
+	float z = -ec[2];
+	meshHandle_.set_origin(translationPoint_, translationNormal_ * 0.01f);
+
+	radius_ = z;
+}
+
+void VertexSelectionViewer::setHandleScale()
+{
+	vec4 mc(center_, 1.0);
+	vec4 ec = modelview_matrix_ * mc;
+	float z = -ec[2];
+	meshHandle_.set_scale(z * 0.1f);
+}
+
 Ray VertexSelectionViewer::get_ray(int x, int y)
 {
 	GLint viewport[4];
@@ -635,7 +665,7 @@ vec2 VertexSelectionViewer::compute_screenCoordinates(vec3 vec)
 {
 	vec4 t = projection_matrix_ * modelview_matrix_ * vec4(vec, 1.0f);
 	t /= t[3];
-	vec2 tVec2 = vec2(t[0], t[1]);
+	vec2 tVec2 = vec2(t[0], -t[1]);
 	tVec2 += vec2(1, 1);
 	tVec2 = vec2(tVec2[0] * width() * 0.5f, tVec2[1] * height() * 0.5f);
 
@@ -648,6 +678,8 @@ void VertexSelectionViewer::set_viewer_mode(ViewerMode mode)
 
 	if (viewerMode_ == ViewerMode::View)
 		vertexDrawingMode_ = VertexDrawingMode::None;
+
+	setHandleScale();
 
 	switch (mode)
 	{

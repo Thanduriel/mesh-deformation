@@ -3,7 +3,6 @@
 #include <iostream>
 
 ModifierHandle::ModifierHandle()
-	: scaleMatrixArrow_(scaling_matrix(1.f)), scaleMatrixTorus_(scaling_matrix(0.13f)), scaleMatrixScale_(scaling_matrix(0.01f))
 {
 	arrowMesh_LocalX_.read("../models/arrow.off");
 	arrowMesh_LocalX_.update_opengl_buffers();
@@ -74,6 +73,18 @@ void ModifierHandle::draw(const mat4& projection_matrix, const mat4& view_matrix
 void ModifierHandle::set_scale(const vec3 scale)
 {
 	scaleMatrixArrow_ = scaling_matrix(scale);
+}
+
+void ModifierHandle::set_scale(float scale)
+{
+	const float scaleArrow = 1.0f;
+	const float scaleTorus = 0.5f;
+	const float scaleScale = 0.05f;
+
+
+	scaleMatrixArrow_ = scaling_matrix(scaleArrow * scale);
+	scaleMatrixTorus_ = scaling_matrix(scaleTorus * scale);
+	scaleMatrixScale_ = scaling_matrix(scaleScale * scale);
 }
 
 bool ModifierHandle::is_translationMode()
@@ -208,8 +219,7 @@ void ModifierHandle::init_local_coordinate_system(mat4 modelview, vec3 normal)
 
 void ModifierHandle::set_origin(const vec3& origin, const vec3& normal)
 {
-	vec3 normalNormalized = normalize(normal) * 0.03f;
-	vec3 newOrigin = origin + normalNormalized;
+	vec3 newOrigin = origin + normal;
 	vec3 dist = newOrigin - origin_;
 	last_hit_point_ += dist;
 	origin_ = newOrigin;
@@ -300,12 +310,12 @@ bool ModifierHandle::is_hit(const Ray& ray)
 		else if (rayResult = is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_))
 		{
 			mode_ = EMode::Rotation_Y;
-			set_Selection(torusMesh_RotationX_);
+			set_Selection(torusMesh_RotationY_);
 		}
 		else if (rayResult = is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_))
 		{
 			mode_ = EMode::Rotation_Z;
-			set_Selection(torusMesh_RotationX_);
+			set_Selection(torusMesh_RotationZ_);
 		}
 	}
 	else if (is_scaleMode())

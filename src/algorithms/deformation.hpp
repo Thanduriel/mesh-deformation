@@ -16,7 +16,7 @@ namespace algorithm {
 		~Deformation();
 
 		// Set the regions for deformations and computes the operator.
-		// @param supportVertices The vertices that should be adjusted to minimize some enegy functional.
+		// @param supportVertices The vertices that should be adjusted to minimize some energy functional.
 		// @param handleVertices The vertices which are manually moved.
 		void set_regions(const std::vector<pmp::Vertex>& supportVertices, 
 			const std::vector<pmp::Vertex>& handleVertices);
@@ -26,11 +26,11 @@ namespace algorithm {
 		void set_order(int k);
 		int get_order() const { return laplaceOrder_; }
 		
-		// Enable area scaling of the laplace operator to improve results for bad triangulations.
+		// Enable area scaling of the Laplace operator to improve results for bad triangulations.
 		void set_area_scaling(bool active);
 		bool get_area_scaling() const { return useAreaScaling_; }
 
-		// Factor which allows to localy interpolate between the different operators.
+		// Factor which allows to locally interpolate between the different operators.
 		// Only values between [0,k-1] where k is the order of the operator have an effect.
 		// Requires that the regions are set.
 		void set_smoothness_handle(pmp::Scalar smoothness);
@@ -62,7 +62,7 @@ namespace algorithm {
 		void update_support_region();
 		void compute_laplace();
 		void compute_higher_order();
-		// Decomposes the matrix into parts assosiated with the free and fixed vertices.
+		// Decomposes the matrix into parts associated with the free and fixed vertices.
 		// @param l1 Output target for the free vertices.
 		// @param l2 Output target for the fixed vertices.
 		void decompose_operator(const SparseMatrixR& lOperator, SparseMatrix& l1, SparseMatrix& l2) const;
@@ -72,7 +72,10 @@ namespace algorithm {
 		
 		// Recomputes the current mesh based on the low resolution version and detail offsets.
 		void update_details();
-		// Applies implicit smoothing to the support region and stores the results in lowResPositions_
+		// Takes the current representation in lowResPositions_ and stores differences to the
+		// real points in detailVectors_.
+		void store_details();
+		// Applies implicit smoothing to the support region and stores the results in lowResPositions_.
 		void implicit_smoothing(pmp::Scalar timeStep);
 		// Computes a local frame based on the vertex normal and one edge.
 		std::tuple<pmp::Normal, pmp::Normal, pmp::Normal> local_frame(pmp::Vertex v) const;
@@ -86,14 +89,14 @@ namespace algorithm {
 		// additional vertex properties
 		enum struct VertexType { None, Support, Handle, Boundary };
 		pmp::VertexProperty<VertexType> typeMarks_;
-		pmp::VertexProperty<int> idx_;		//< indicies for support region
-		pmp::VertexProperty<int> meshIdx_;	//< indicies for all vertices
+		pmp::VertexProperty<int> idx_;		//< indices for support region
+		pmp::VertexProperty<int> meshIdx_;	//< indices for all vertices
 		pmp::VertexProperty<pmp::Scalar> smoothness_;
-		pmp::VertexProperty<pmp::Scalar> detailOffsets_; //< details along normal directions of the high resolution mesh
-		pmp::VertexProperty<pmp::Normal> detailVectors_;
+		pmp::VertexProperty<pmp::Normal> detailVectors_; //< details in a local frame of the high resolution mesh
 		pmp::VertexProperty<pmp::Point> lowResPositions_; //< positions in the low resolution representation
+		pmp::VertexProperty<pmp::Point> initialPositions_; //< original positions at the time of set_regions().
 
-		// laplace operator
+		// Laplace operator
 		SparseMatrixR laplacian_;
 		SparseMatrix laplace1_; //< free vertices
 		SparseMatrix laplace2_; //< fixed vertices

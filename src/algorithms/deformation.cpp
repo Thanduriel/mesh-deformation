@@ -17,6 +17,7 @@ namespace algorithm {
 		detailVectors_(mesh_.add_vertex_property<pmp::Normal>("v:detailV")),
 		lowResPositions_(mesh_.add_vertex_property<Point>("v:lowResPosition")),
 		initialPositions_(mesh_.add_vertex_property<Point>("v:initPosition")),
+		points_(mesh_.get_vertex_property<Point>("v:point")),
 		laplacian_(mesh.n_vertices(), mesh.n_vertices()),
 		areaScale_(mesh.n_vertices()),
 		smoothnessScale_(mesh.n_vertices()),
@@ -49,7 +50,7 @@ namespace algorithm {
 		supportVertices_ = supportVertices;
 		handleVertices_ = handleVertices;
 
-		// distribute global and per region indicies
+		// distribute global and per region indices
 		int index = 0;
 		for (Vertex v : supportVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Support; }
 		for (Vertex v : handleVertices_) { idx_[v] = index++; typeMarks_[v] = VertexType::Handle; }
@@ -66,10 +67,16 @@ namespace algorithm {
 		compute_laplace();
 		compute_higher_order();
 
-		implicit_smoothing(0.00005);
+		implicit_smoothing(smoothingTimeStep_);
 
 		// update vertices now to not have them jump with the first modification
-		//update_support_region();
+		update_support_region();
+	/*	for (Vertex v : supportVertices_)
+		{
+			lowResPositions_[v] = points[v];
+			points[v] = initialPositions_[v];
+		}
+		store_details();*/
 	}
 
 	void Deformation::reset_regions()
@@ -191,9 +198,42 @@ namespace algorithm {
 			originScaleFrame_.push_back(p);
 	}
 
-	void Deformation::toggle_details()
+	void Deformation::set_smoothing_strength(pmp::Scalar timeStep)
 	{
-		showDetails_ = !showDetails_;
+		smoothingTimeStep_ = timeStep;
+
+		// apply new results
+		if (is_set())
+		{
+			// remember current configuration to restore quickly
+			auto tempPoints = mesh_.vertex_property<Point>("v:tmpPoint");
+			for (Vertex v : handleVertices_)
+			{
+				tempPoints[v] = points_[v];
+				points_[v] = initialPositions_[v];
+			}
+			for (Vertex v : supportVertices_)
+			{
+				tempPoints[v] = lowResPositions_[v];
+				points_[v] = initialPositions_[v];
+			}
+
+		//	update_support_region();
+			implicit_smoothing(smoothingTimeStep_);
+			store_details();
+			
+			for (Vertex v : handleVertices_)
+				points_[v] = tempPoints[v];
+			for (Vertex v : supportVertices_)
+				lowResPositions_[v] = tempPoints[v];
+
+			update_details();
+		}
+	}
+
+	void Deformation::show_details(bool show)
+	{
+		showDetails_ = show;
 
 		update_details();
 	}
@@ -317,7 +357,6 @@ namespace algorithm {
 		useBasisFunctions_ = compute_affine_frame();
 		if (useBasisFunctions_)
 		{
-			std::cout << "Using precomputed basis functions.\n";
 			useBasisFunctions_ = true;
 
 			DenseMatrix x2 = DenseMatrix::Zero(numFixed, 4);
@@ -539,7 +578,18 @@ namespace algorithm {
 
 		SparseMatrix L1;
 		SparseMatrix L2;
-		decompose_operator(laplacian_, L1, L2);
+		SparseMatrixR lOperator;
+		switch (smoothingOrder_)
+		{
+		case 3: lOperator = laplacian_ * areaScale_ * laplacian_ * areaScale_ * laplacian_;
+			break;
+		case 2: lOperator = laplacian_ * areaScale_ * laplacian_;
+			break;
+		case 1:
+		default:
+			lOperator = laplacian_;
+		}
+		decompose_operator(lOperator, L1, L2);
 
 		SparseMatrix I(laplace1_.rows(), laplace1_.cols());
 		I.setIdentity();

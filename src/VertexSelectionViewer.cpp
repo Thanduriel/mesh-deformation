@@ -130,7 +130,10 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			set_viewer_mode(ViewerMode::Translation);
 			return;
 		case GLFW_KEY_D:
-			deformationSpace_->toggle_details();
+			// toggle details
+		//	deformationSpace_->set_smoothing_strength(deformationSpace_->get_smoothing_strength() * 2.f);
+			showDetails_ = !showDetails_;
+			deformationSpace_->show_details(showDetails_);
 			meshIsDirty_ |= MeshUpdate::Geometry;
 			return;
 		}
@@ -378,6 +381,20 @@ void VertexSelectionViewer::process_imgui()
 	}
 	if (viewerMode_ != ViewerMode::View && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		ImGui::Text("details");
+		if (ImGui::Checkbox("show details [D]", &showDetails_))
+		{
+			deformationSpace_->show_details(showDetails_);
+			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+		if (ImGui::SliderFloat("strength", &detailStrength_, 0.0000001f, 100.f, "%.3g", 10.f))
+		{
+			deformationSpace_->set_smoothing_strength(detailStrength_);
+			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+
+		ImGui::Separator();
+
 		constexpr static const char* MODIFIER_NAMES[] = { "Translate [T]", "Rotate [R]", "Scale [S]" };
 		// display possible changes from hotkeys
 		currentModifierItem_ = MODIFIER_NAMES[static_cast<size_t>(viewerMode_) - 1];
@@ -627,7 +644,12 @@ bool VertexSelectionViewer::init_modifier()
 	normal.normalize();
 	translationNormal_ = normal;
 
+	// get current values for the GUI
 	deformationSpace_->set_regions(supportVertices, handleVertices);
+	detailStrength_ = deformationSpace_->get_smoothing_strength();
+	showDetails_ = deformationSpace_->is_showing_details();
+	operatorOrder_ = deformationSpace_->get_order();
+	useAreaScaling_ = deformationSpace_->get_area_scaling();
 
 	meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
 	meshIsDirty_ |= MeshUpdate::Geometry;

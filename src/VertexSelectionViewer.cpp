@@ -381,7 +381,6 @@ void VertexSelectionViewer::process_imgui()
 	}
 	if (viewerMode_ != ViewerMode::View && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		ImGui::Text("details");
 		if (ImGui::Checkbox("show details [D]", &showDetails_))
 		{
 			deformationSpace_->show_details(showDetails_);
@@ -390,6 +389,11 @@ void VertexSelectionViewer::process_imgui()
 		if (ImGui::SliderFloat("strength", &detailStrength_, 0.0000001f, 100.f, "%.3g", 10.f))
 		{
 			deformationSpace_->set_smoothing_strength(detailStrength_);
+			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+		if (ImGui::SliderInt("details order", &smoothingOrder_, 1, 3))
+		{
+			deformationSpace_->set_smoothing_order(smoothingOrder_);
 			meshIsDirty_ |= MeshUpdate::Geometry;
 		}
 
@@ -649,6 +653,7 @@ bool VertexSelectionViewer::init_modifier()
 	detailStrength_ = deformationSpace_->get_smoothing_strength();
 	showDetails_ = deformationSpace_->is_showing_details();
 	operatorOrder_ = deformationSpace_->get_order();
+	smoothingOrder_ = deformationSpace_->get_smoothing_order();
 	useAreaScaling_ = deformationSpace_->get_area_scaling();
 
 	meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);

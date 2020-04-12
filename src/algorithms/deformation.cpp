@@ -231,6 +231,12 @@ namespace algorithm {
 		}
 	}
 
+	void Deformation::set_smoothing_order(int _order)
+	{
+		smoothingOrder_ = _order;
+		set_smoothing_strength(smoothingTimeStep_);
+	}
+
 	void Deformation::show_details(bool show)
 	{
 		showDetails_ = show;

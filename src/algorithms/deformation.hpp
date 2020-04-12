@@ -47,8 +47,11 @@ namespace algorithm {
 		//TODO Comment
 		void reset_scale_origin();
 
+		// smoothing for detail preservation
 		void set_smoothing_strength(pmp::Scalar timeStep);
 		pmp::Scalar get_smoothing_strength() const { return smoothingTimeStep_; }
+		void set_smoothing_order(int _order);
+		int get_smoothing_order() const { return smoothingOrder_; }
 		void show_details(bool show);
 		bool is_showing_details() const { return showDetails_; }
 	private:

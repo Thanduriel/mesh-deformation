@@ -36,7 +36,7 @@ namespace algorithm {
 		void set_smoothness_handle(pmp::Scalar smoothness);
 		void set_smoothness_boundary(pmp::Scalar smoothness);
 
-		// Operator is ready for modifications to the vertices.
+		// The operator is ready for modifications to the handle vertices.
 		bool is_set() const;
 
 		// Applies the given transformation to the handle vertices and updates the vertices in the support region.
@@ -47,7 +47,13 @@ namespace algorithm {
 		//TODO Comment
 		void reset_scale_origin();
 
-		void toggle_details();
+		// smoothing for detail preservation
+		void set_smoothing_strength(pmp::Scalar timeStep);
+		pmp::Scalar get_smoothing_strength() const { return smoothingTimeStep_; }
+		void set_smoothing_order(int _order);
+		int get_smoothing_order() const { return smoothingOrder_; }
+		void show_details(bool show);
+		bool is_showing_details() const { return showDetails_; }
 	private:
 		// matrix types in use
 		using MatScalar = double; // scalar type for equation system solving
@@ -95,6 +101,7 @@ namespace algorithm {
 		pmp::VertexProperty<pmp::Normal> detailVectors_; //< details in a local frame of the high resolution mesh
 		pmp::VertexProperty<pmp::Point> lowResPositions_; //< positions in the low resolution representation
 		pmp::VertexProperty<pmp::Point> initialPositions_; //< original positions at the time of set_regions().
+		pmp::VertexProperty<pmp::Point> points_; //< standard point property "v:point" for convenience.
 
 		// Laplace operator
 		SparseMatrixR laplacian_;
@@ -121,5 +128,7 @@ namespace algorithm {
 
 		// smoothing related
 		bool showDetails_ = true;
+		int smoothingOrder_ = 1;
+		pmp::Scalar smoothingTimeStep_ = 0.000001;
 	};
 }

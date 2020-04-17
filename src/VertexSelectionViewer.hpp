@@ -116,7 +116,10 @@ private:
 	// gui options
 	VertexDrawingMode vertexDrawingMode_ = VertexDrawingMode::None;
 	float brushSize_;
+	float detailStrength_ = 0.001;
+	bool showDetails_ = true;
 	int operatorOrder_ = 3;
+	int smoothingOrder_ = 1;
 	float smoothnessHandle_ = 2.f;
 	float smoothnessBoundary_ = 2.f;
 	bool useAreaScaling_ = false;

@@ -214,7 +214,11 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 	if (!isVertexTranslationMouseActive_)
 	{
 		if (vertexDrawingMode_ == VertexDrawingMode::None)
+		{
+			if (right_mouse_pressed() || (left_mouse_pressed() && shift_pressed()))
+				zoom(xpos, ypos);
 			TrackballViewer::motion(xpos, ypos);
+		}
 		else if (isMouseDown_)
 			draw_on_mesh();
 		if (meshHandle_.is_hit(get_ray(xpos, ypos)) && viewerMode_ != ViewerMode::View)
@@ -238,9 +242,10 @@ void VertexSelectionViewer::mouse(int button, int action, int mods)
 	{
 		if (vertexDrawingMode_ != VertexDrawingMode::None && viewerMode_ == ViewerMode::View)
 			draw_on_mesh();
+		else
+			TrackballViewer::mouse(button, action, mods);
 
 		isVertexTranslationMouseActive_ = false;
-		TrackballViewer::mouse(button, action, mods);
 	}
 }
 
@@ -439,6 +444,16 @@ void VertexSelectionViewer::update_mesh()
 	mesh_.update_opengl_buffers();
 }
 
+void VertexSelectionViewer::zoom(int, int y)
+{
+	float dy = y - last_point_2d_[1];
+	float h = height();
+	translate(vec3(0.0, 0.0, radius_ * dy * 3.0 / h));
+
+	setHandleScale();
+	setHandleOrigin();
+}
+
 void VertexSelectionViewer::scroll(double /*xoffset*/, double yoffset)
 {
 	float d = -(float)yoffset * 0.12 * radius_;
@@ -458,13 +473,14 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 	if ((ypos > 0 || xpos > 0) && norm(mouseMotion) > 0)
 	{
 		const Ray ray = get_ray(xpos, ypos);
-		const std::vector<vec3> normals = meshHandle_.get_active_normal_axes();
-		auto res = algorithm::intersect(ray, meshHandle_.origin(), normals[0]);
-		if (!res) res = algorithm::intersect(ray, meshHandle_.origin(), normals[1]);
-		const vec3 hitP = ray.origin + ray.direction * res.value();
-		std::cout << meshHandle_.get_last_hit_point() << std::endl;
-		const vec3 dir = hitP - meshHandle_.get_last_hit_point();
+		vec2 midScreen = vec2(width() / 2, height() / 2);
+		vec3 normal = compute_WorldCoordinates(startPos, 0.0f) - meshHandle_.get_last_hit_point();
+		normal.normalize();
 
+		auto res = algorithm::intersect(ray, meshHandle_.get_last_hit_point(), normal);
+
+		const vec3 hitP = ray.origin + ray.direction * res.value();
+		const vec3 dir = hitP - meshHandle_.get_last_hit_point();
 		float scalar = dot(dir, meshHandle_.compute_move_vector(1.f));
 
 		vec3 movement = meshHandle_.compute_move_vector(scalar);
@@ -493,35 +509,7 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 		float angle = (atan2(lastPos[1], lastPos[0]) - atan2(currMousePos[1], currMousePos[0]));
 		angle *= 180.0f / M_PI;
 
-		GLint viewport[4];
-		glGetIntegerv(GL_VIEWPORT, viewport);
-		float x = xpos;
-		float y = ypos;
-
-		// take into accout highDPI scaling
-		x *= high_dpi_scaling();
-		y *= high_dpi_scaling();
-
-		// in OpenGL y=0 is at the 'bottom'
-		y = viewport[3] - y;
-
-		const float xf = ((float)x - (float)viewport[0]) / ((float)viewport[2]) * 2.0f - 1.0f;
-		const float yf = ((float)y - (float)viewport[1]) / ((float)viewport[3]) * 2.0f - 1.0f;
-
-		const mat4 mvp = projection_matrix_ * modelview_matrix_;
-		const mat4 inv = inverse(mvp);
-		// far plane
-		vec4 p = inv * vec4(xf, yf, 1.f, 1.0f);
-		// near plane
-		vec4 origin = inv * vec4(xf, yf, 0.f, 1.0f);
-		p /= p[3];
-		origin /= origin[3];
-		const vec4 dir = p - origin;
-
-		vec3 dir3 = vec3(dir[0], dir[1], dir[2]);
-
-		double dotAngle = atan2(norm(cross(dir3, meshHandle_.compute_rotation_vector())), dot(dir3, meshHandle_.compute_rotation_vector()));
-		dotAngle *= 180.0f / M_PI;
+		float dotAngle = compute_viewerAngleWith(xpos, ypos, meshHandle_.compute_rotation_vector());
 
 		if (dotAngle < 90)
 			deformationSpace_->rotate(meshHandle_.compute_rotation_vector(), -angle);
@@ -535,12 +523,14 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 
 void VertexSelectionViewer::scaleHandle(float xpos, float ypos)
 {
-	vec2 midScreen = compute_screenCoordinates(meshHandle_.origin());
-	vec2 currMousePos = vec2(xpos, ypos) - midScreen;
-	vec2 startPos = meshHandle_.get_mouseStartPos() - midScreen;
+	vec2 mouseStartPos = vec2(xpos, height() - ypos);
+	vec2 originScreen = compute_screenCoordinates(meshHandle_.origin());
+	originScreen[1] = height() - originScreen[1];
+	vec2 currMousePos = mouseStartPos - originScreen;
+	vec2 startPos = meshHandle_.get_mouseStartPos() - originScreen;
 	float maxNorm = norm(startPos);
+	float mouseMotionNorm = norm(vec2(xpos, ypos) - meshHandle_.get_mouseStartPos());
 
-	float mouseMotionNorm = norm(currMousePos) - norm(startPos);
 	if (mouseMotionNorm != 0)
 	{
 		deformationSpace_->scale(norm(currMousePos) / maxNorm);
@@ -699,6 +689,41 @@ void VertexSelectionViewer::set_viewer_mode(ViewerMode mode)
 	}
 
 	viewerMode_ = mode;
+}
+
+float VertexSelectionViewer::compute_viewerAngleWith(float xpos, float ypos, vec3 vec)
+{
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	float x = xpos;
+	float y = ypos;
+
+	// take into accout highDPI scaling
+	x *= high_dpi_scaling();
+	y *= high_dpi_scaling();
+
+	// in OpenGL y=0 is at the 'bottom'
+	y = viewport[3] - y;
+
+	const float xf = ((float)x - (float)viewport[0]) / ((float)viewport[2]) * 2.0f - 1.0f;
+	const float yf = ((float)y - (float)viewport[1]) / ((float)viewport[3]) * 2.0f - 1.0f;
+
+	const mat4 mvp = projection_matrix_ * modelview_matrix_;
+	const mat4 inv = inverse(mvp);
+	// far plane
+	vec4 p = inv * vec4(xf, yf, 1.f, 1.0f);
+	// near plane
+	vec4 origin = inv * vec4(xf, yf, 0.f, 1.0f);
+	p /= p[3];
+	origin /= origin[3];
+	const vec4 dir = p - origin;
+
+	vec3 dir3 = vec3(dir[0], dir[1], dir[2]);
+
+	double dotAngle = atan2(norm(cross(dir3, vec)), dot(dir3, vec));
+	dotAngle *= 180.0f / M_PI;
+
+	return dotAngle;
 }
 
 vec3 VertexSelectionViewer::compute_WorldCoordinates(vec2 vec, float zf)

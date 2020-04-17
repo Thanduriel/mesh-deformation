@@ -79,6 +79,8 @@ public:
 
 	void update_mesh();
 
+	void zoom(int, int y);
+
 	void scroll(double, double yoffset) override;
 
 	// Compute ray going through a screen position.
@@ -94,6 +96,8 @@ private:
 	void init_picking();
 	void draw_on_mesh();
 	void set_viewer_mode(ViewerMode mode);
+
+	float compute_viewerAngleWith(float xpos, float ypos, vec3 vec);
 
 	vec2 compute_screenCoordinates(vec3 vec);
 	vec3 compute_WorldCoordinates(vec2 vec, float zf);

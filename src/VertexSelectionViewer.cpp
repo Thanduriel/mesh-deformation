@@ -216,14 +216,17 @@ void VertexSelectionViewer::motion(double xpos, double ypos)
 
 	if (!isVertexTranslationMouseActive_)
 	{
-		if (vertexDrawingMode_ == VertexDrawingMode::None)
+		if (right_mouse_pressed() || (left_mouse_pressed() && shift_pressed()))
 		{
-			if (right_mouse_pressed() || (left_mouse_pressed() && shift_pressed()))
-				zoom(xpos, ypos);
-			TrackballViewer::motion(xpos, ypos);
+			zoom(xpos, ypos);
+			last_point_2d_[0] = xpos;
+			last_point_2d_[1] = ypos;
 		}
-		else if (isMouseDown_)
+		else if (vertexDrawingMode_ != VertexDrawingMode::None && isMouseDown_)
 			draw_on_mesh();
+		else
+			TrackballViewer::motion(xpos, ypos);
+
 		if (meshHandle_.is_hit(get_ray(xpos, ypos)) && viewerMode_ != ViewerMode::View)
 		{
 
@@ -243,7 +246,7 @@ void VertexSelectionViewer::mouse(int button, int action, int mods)
 	}
 	else
 	{
-		if (vertexDrawingMode_ != VertexDrawingMode::None && viewerMode_ == ViewerMode::View)
+		if (isMouseDown_ && vertexDrawingMode_ != VertexDrawingMode::None && viewerMode_ == ViewerMode::View)
 			draw_on_mesh();
 		else
 			TrackballViewer::mouse(button, action, mods);

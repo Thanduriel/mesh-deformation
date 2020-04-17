@@ -97,6 +97,8 @@ private:
 	void draw_on_mesh();
 	void set_viewer_mode(ViewerMode mode);
 
+	void compute_translation_normal();
+
 	float compute_viewerAngleWith(float xpos, float ypos, vec3 vec);
 
 	vec2 compute_screenCoordinates(vec3 vec);
@@ -135,7 +137,7 @@ private:
 	bool isMouseDown_ = false;
 	pmp::Normal translationNormal_;
 	pmp::Point translationPoint_;
-	
+
 	SurfaceColorMesh mesh_;
 	ModifierHandle meshHandle_;
 	pmp::vec3 pickPosition_;
@@ -151,5 +153,5 @@ private:
 	double mousePosX_ = 0.0;
 	double mousePosY_ = 0.0;
 
-
+	bool updateNormal_ = false;
 };

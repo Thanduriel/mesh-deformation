@@ -250,6 +250,12 @@ void VertexSelectionViewer::mouse(int button, int action, int mods)
 
 		isVertexTranslationMouseActive_ = false;
 	}
+
+	if (updateNormal_)
+	{
+		updateNormal_ = false;
+		compute_translation_normal();
+	}
 }
 
 Vertex VertexSelectionViewer::pick_vertex(int x, int y)
@@ -539,6 +545,7 @@ void VertexSelectionViewer::rotationHandle(float xpos, float ypos)
 
 		last_point_2d_ = ivec2(xpos, ypos);
 		meshIsDirty_ |= MeshUpdate::Geometry;
+		updateNormal_ = true;
 	}
 }
 
@@ -613,18 +620,12 @@ bool VertexSelectionViewer::init_modifier()
 	auto colors = mesh_.get_vertex_property<Color>("v:col");
 	std::vector<Vertex> supportVertices;
 	std::vector<Vertex> handleVertices;
-	pmp::Normal normal(0, 0, 0);
-	pmp::Point handlePoint(0, 0, 0);
-	int pointIndex = 0;
 
 	for (Vertex v : mesh_.vertices())
 	{
 		if (colors[v] == Color(0, 1, 0))
 		{
 			handleVertices.push_back(v);
-			normal += SurfaceNormals::compute_vertex_normal(mesh_, v);
-			handlePoint += points[v];
-			pointIndex++;
 		}
 		else if (colors[v] == Color(0, 0, 1))
 		{
@@ -634,9 +635,7 @@ bool VertexSelectionViewer::init_modifier()
 
 	if (!supportVertices.size() || !handleVertices.size()) return false;
 
-	translationPoint_ = handlePoint / pointIndex;
-	normal.normalize();
-	translationNormal_ = normal;
+	compute_translation_normal();
 
 	// get current values for the GUI
 	deformationSpace_->set_regions(supportVertices, handleVertices);
@@ -646,10 +645,35 @@ bool VertexSelectionViewer::init_modifier()
 	smoothingOrder_ = deformationSpace_->get_smoothing_order();
 	useAreaScaling_ = deformationSpace_->get_area_scaling();
 
-	meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
 	meshIsDirty_ |= MeshUpdate::Geometry;
 
 	return true;
+}
+
+void VertexSelectionViewer::compute_translation_normal()
+{
+	auto points = mesh_.get_vertex_property<Point>("v:point");
+	auto colors = mesh_.get_vertex_property<Color>("v:col");
+	pmp::Normal normal(0, 0, 0);
+	pmp::Point handlePoint(0, 0, 0);
+	int pointIndex = 0;
+
+	for (Vertex v : mesh_.vertices())
+	{
+		if (colors[v] == Color(0, 1, 0))
+		{
+			normal += SurfaceNormals::compute_vertex_normal(mesh_, v);
+			handlePoint += points[v];
+			pointIndex++;
+		}
+	}
+
+	translationPoint_ = handlePoint / pointIndex;
+	normal.normalize();
+	translationNormal_ = normal;
+	meshHandle_.init_local_coordinate_system(modelview_matrix_, translationNormal_);
+
+	meshIsDirty_ |= MeshUpdate::Geometry;
 }
 
 void VertexSelectionViewer::init_picking()
@@ -714,7 +738,6 @@ void VertexSelectionViewer::set_viewer_mode(ViewerMode mode)
 		init_picking();
 		break;
 	}
-
 	viewerMode_ = mode;
 }
 

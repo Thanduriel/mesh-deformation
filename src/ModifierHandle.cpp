@@ -87,7 +87,7 @@ void ModifierHandle::set_scale(float scale)
 	scaleMatrixScale_ = scaling_matrix(scaleScale * scale);
 }
 
-bool ModifierHandle::is_translationMode()
+bool ModifierHandle::is_translationMode() const
 {
 	switch (mode_)
 	{
@@ -102,7 +102,7 @@ bool ModifierHandle::is_translationMode()
 	return false;
 }
 
-bool ModifierHandle::is_rotationMode()
+bool ModifierHandle::is_rotationMode() const
 {
 	switch (mode_)
 	{
@@ -117,7 +117,7 @@ bool ModifierHandle::is_rotationMode()
 	return false;
 }
 
-bool ModifierHandle::is_scaleMode()
+bool ModifierHandle::is_scaleMode() const
 {
 	switch (mode_)
 	{
@@ -132,7 +132,7 @@ bool ModifierHandle::is_scaleMode()
 	return false;
 }
 
-vec3 ModifierHandle::get_active_translation_axis()
+vec3 ModifierHandle::get_active_translation_axis() const
 {
 	if (mode_ == EMode::Translation_X)
 		return local_x_;
@@ -278,7 +278,7 @@ vec2 ModifierHandle::get_mouseStartPos()
 
 bool ModifierHandle::is_hit(const Ray& ray)
 {
-	remove_Selection();
+	remove_selection();
 
 	std::optional<float> rayResult = std::nullopt;
 
@@ -287,17 +287,17 @@ bool ModifierHandle::is_hit(const Ray& ray)
 		if (rayResult = is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_))
 		{
 			mode_ = EMode::Translation_X;
-			set_Selection(arrowMesh_LocalX_);
+			set_selection(arrowMesh_LocalX_);
 		}
 		else if (rayResult = is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_))
 		{
 			mode_ = EMode::Translation_Y;
-			set_Selection(arrowMesh_LocalY_);
+			set_selection(arrowMesh_LocalY_);
 		}
 		else if (rayResult = is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_))
 		{
 			mode_ = EMode::Translation_Z;
-			set_Selection(arrowMesh_LocalZ_);
+			set_selection(arrowMesh_LocalZ_);
 		}
 	}
 	else if (is_rotationMode())
@@ -305,17 +305,17 @@ bool ModifierHandle::is_hit(const Ray& ray)
 		if (rayResult = is_hit(ray, modelMatrixInverseRotationX_, torusMesh_RotationX_))
 		{
 			mode_ = EMode::Rotation_X;
-			set_Selection(torusMesh_RotationX_);
+			set_selection(torusMesh_RotationX_);
 		}
 		else if (rayResult = is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_))
 		{
 			mode_ = EMode::Rotation_Y;
-			set_Selection(torusMesh_RotationY_);
+			set_selection(torusMesh_RotationY_);
 		}
 		else if (rayResult = is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_))
 		{
 			mode_ = EMode::Rotation_Z;
-			set_Selection(torusMesh_RotationZ_);
+			set_selection(torusMesh_RotationZ_);
 		}
 	}
 	else if (is_scaleMode())
@@ -323,12 +323,12 @@ bool ModifierHandle::is_hit(const Ray& ray)
 		if (rayResult = is_hit(ray, modelMatrixScaleInverseX_, scaleMesh_ScaleX_))
 		{
 			mode_ = EMode::Scale_X;
-			set_Selection(scaleMesh_ScaleX_);
+			set_selection(scaleMesh_ScaleX_);
 		}
 		else if (rayResult = is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_))
 		{
 			mode_ = EMode::Scale_Y;
-			set_Selection(scaleMesh_ScaleY_);
+			set_selection(scaleMesh_ScaleY_);
 		}
 	}
 
@@ -376,7 +376,7 @@ mat4 ModifierHandle::compute_modelViewMatrix(vec3 forward, mat4 scaleMatrix)
 {
 	const vec3 forwardN = normalize(forward);
 	const vec3 defForward(0.f, 0.f, 1.f);
-	const float angle = acos(dot(forwardN, defForward)) * 360.f / (2.f * 3.1415f);
+	const float angle = acos(dot(forwardN, defForward)) * 180.f / M_PI;
 	return translation_matrix(origin_) * transpose(rotation_matrix(cross(forwardN, defForward), angle)) * scaleMatrix;
 }
 
@@ -402,7 +402,7 @@ std::optional<float> ModifierHandle::is_hit(const Ray& ray, mat4 modelMatrixInve
 	return std::nullopt;
 }
 
-void ModifierHandle::set_Selection(SurfaceColorMesh& mesh)
+void ModifierHandle::set_selection(SurfaceColorMesh& mesh)
 {
 	if (selectionMeshes_.find(&mesh) == selectionMeshes_.end())
 	{
@@ -415,19 +415,19 @@ void ModifierHandle::set_Selection(SurfaceColorMesh& mesh)
 	}
 }
 
-void ModifierHandle::remove_Selection()
+void ModifierHandle::remove_selection()
 {
-	remove_Selection(arrowMesh_LocalX_);
-	remove_Selection(arrowMesh_LocalY_);
-	remove_Selection(arrowMesh_LocalZ_);
-	remove_Selection(torusMesh_RotationX_);
-	remove_Selection(torusMesh_RotationY_);
-	remove_Selection(torusMesh_RotationZ_);
-	remove_Selection(scaleMesh_ScaleX_);
-	remove_Selection(scaleMesh_ScaleY_);
+	remove_selection(arrowMesh_LocalX_);
+	remove_selection(arrowMesh_LocalY_);
+	remove_selection(arrowMesh_LocalZ_);
+	remove_selection(torusMesh_RotationX_);
+	remove_selection(torusMesh_RotationY_);
+	remove_selection(torusMesh_RotationZ_);
+	remove_selection(scaleMesh_ScaleX_);
+	remove_selection(scaleMesh_ScaleY_);
 }
 
-void ModifierHandle::remove_Selection(SurfaceColorMesh& mesh)
+void ModifierHandle::remove_selection(SurfaceColorMesh& mesh)
 {
 	if (selectionMeshes_.find(&mesh) != selectionMeshes_.end())
 	{

@@ -389,15 +389,6 @@ void VertexSelectionViewer::process_imgui()
 			ImGui::EndCombo();
 		}
 
-		// todo: move this information to a better place?
-		if (viewerMode_ != ViewerMode::View)
-		{
-			ImGui::BulletText("X: Select local x-axis");
-			ImGui::BulletText("Y: Select local y-axis");
-			ImGui::BulletText("Z: Select local z-axis");
-			ImGui::Separator();
-			ImGui::Text(("Current ViewMode " + viewerMode_).c_str());
-		}
 		const BoundingBox bb = mesh_.bounds();
 		ImGui::SliderFloat("brush size", &brushSize_, 0.0001, bb.size() * 0.5);
 	}

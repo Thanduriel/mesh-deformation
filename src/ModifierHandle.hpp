@@ -1,8 +1,7 @@
 #pragma once
 
-#ifndef M_PI
-#define M_PI 3.1415 // expected by pmp
-#endif // !M_PI
+#define _USE_MATH_DEFINES
+#include <math.h> // pmp expects M_PI 
 #include "algorithms/intersection.hpp"
 #include "pmp/visualization/MeshViewer.h"
 #include "imgui.h"
@@ -10,27 +9,22 @@
 #include <memory>
 #include <unordered_set>
 
-namespace algorithm {
-	class Deformation;
-}
-
-enum class EMode
-{
-	None,
-	Translation_X,
-	Translation_Y,
-	Translation_Z,
-	Rotation_X,
-	Rotation_Y,
-	Rotation_Z,
-	Scale_X,
-	Scale_Y,
-	Scale_Z
-};
-
-
 class ModifierHandle {
 public:
+	enum class EMode
+	{
+		None,
+		Translation_X,
+		Translation_Y,
+		Translation_Z,
+		Rotation_X,
+		Rotation_Y,
+		Rotation_Z,
+		Scale_X,
+		Scale_Y,
+		Scale_Z
+	};
+
 	ModifierHandle();
 	~ModifierHandle();
 
@@ -46,11 +40,11 @@ public:
 
 	vec2 get_mouseStartPos();
 
-	bool is_translationMode();
-	bool is_rotationMode();
-	bool is_scaleMode();
+	bool is_translationMode() const;
+	bool is_rotationMode() const;
+	bool is_scaleMode() const;
 
-	vec3 get_active_translation_axis();
+	vec3 get_active_translation_axis() const;
 	std::vector<vec3> get_active_normal_axes();
 
 	vec3 get_last_hit_point();
@@ -77,11 +71,11 @@ private:
 
 	std::optional<float> is_hit(const Ray& ray, mat4 modelMatrixInverse,const SurfaceColorMesh& mesh) const;
 
-	void set_Selection(SurfaceColorMesh& mesh);
+	void set_selection(SurfaceColorMesh& mesh);
 
-	void remove_Selection(SurfaceColorMesh & mesh);
+	void remove_selection(SurfaceColorMesh & mesh);
 
-	void remove_Selection();
+	void remove_selection();
 
 	SurfaceColorMesh arrowMesh_LocalX_;
 	SurfaceColorMesh arrowMesh_LocalY_;

@@ -9,39 +9,16 @@ namespace algorithm {
 	class Deformation;
 }
 
-enum class ViewerMode
-{
-	View,
-	Translation,
-	Rotation,
-	Scale
-};
-
-inline std::string operator+(std::string os, ViewerMode c)
-{
-	switch (c)
-	{
-	case ViewerMode::View:
-		os += "View";
-		break;
-	case ViewerMode::Translation:
-		os += "Translation";
-		break;
-	case ViewerMode::Scale:
-		os += "Scale";
-		break;
-	case ViewerMode::Rotation:
-		os += "Rotation";
-		break;
-	default:
-		os = "None";
-	}
-
-	return os;
-}
-
 class VertexSelectionViewer : public pmp::TrackballViewer {
 public:
+	enum struct ViewerMode
+	{
+		View,
+		Translation,
+		Rotation,
+		Scale
+	};
+
 	enum struct VertexDrawingMode
 	{
 		None,

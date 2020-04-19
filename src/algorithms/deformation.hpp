@@ -20,7 +20,14 @@ namespace algorithm {
 		// @param handleVertices The vertices which are manually moved.
 		void set_regions(const std::vector<pmp::Vertex>& supportVertices, 
 			const std::vector<pmp::Vertex>& handleVertices);
+
+		// Clears the selected regions, making the operator invalid.
+		// Does not change the mesh.
 		void reset_regions();
+
+		// Revertes the mesh to the state of the last set_regions() call,
+		// canceling changes to the handle.
+		void reset_handle();
 
 		// Set the energy form to be minimized as order of the operator L^k.
 		void set_order(int k);
@@ -39,7 +46,8 @@ namespace algorithm {
 		// The operator is ready for modifications to the handle vertices.
 		bool is_set() const;
 
-		// Applies the given transformation to the handle vertices and updates the vertices in the support region.
+		// Applies the given transformation to the handle vertices 
+		// and updates the vertices in the support region.
 		void translate(const pmp::Normal& translation);
 		void scale(pmp::Scalar scale);
 		void rotate(const pmp::Normal& axis, pmp::Scalar angle);
@@ -47,11 +55,13 @@ namespace algorithm {
 		//TODO Comment
 		void reset_scale_origin();
 
-		// smoothing for detail preservation
+		// Smoothing for detail preservation.
 		void set_smoothing_strength(pmp::Scalar timeStep);
 		pmp::Scalar get_smoothing_strength() const { return smoothingTimeStep_; }
+		// Same as set_order() but used in the implicit smoothing.
 		void set_smoothing_order(int _order);
 		int get_smoothing_order() const { return smoothingOrder_; }
+		// Should details be added to the vertices in the support region.
 		void show_details(bool show);
 		bool is_showing_details() const { return showDetails_; }
 	private:
@@ -84,6 +94,7 @@ namespace algorithm {
 		// Applies implicit smoothing to the support region and stores the results in lowResPositions_.
 		void implicit_smoothing(pmp::Scalar timeStep);
 		// Computes a local frame based on the vertex normal and one edge.
+		// @return The normalized orthogonal basis vectors.
 		std::tuple<pmp::Normal, pmp::Normal, pmp::Normal> local_frame(pmp::Vertex v) const;
 
 		// mesh and modifier regions

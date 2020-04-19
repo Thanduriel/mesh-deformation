@@ -71,18 +71,26 @@ namespace algorithm {
 
 		// update vertices now to not have them jump with the first modification
 		update_support_region();
-	/*	for (Vertex v : supportVertices_)
-		{
-			lowResPositions_[v] = points[v];
-			points[v] = initialPositions_[v];
-		}
-		store_details();*/
 	}
 
 	void Deformation::reset_regions()
 	{
 		supportVertices_.clear();
 		handleVertices_.clear();
+	}
+
+	void Deformation::reset_handle()
+	{
+		assert(is_set());
+
+		for (Vertex v : handleVertices_)
+			points_[v] = initialPositions_[v];
+
+		compute_affine_frame();
+		reset_scale_origin();
+		update_support_region();
+		update_details();
+		
 	}
 
 	void Deformation::set_order(int k)

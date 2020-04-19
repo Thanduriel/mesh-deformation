@@ -109,7 +109,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			return;
 		}
 	}
-	else
+	else // modifier mode
 	{
 		switch (key)
 		{
@@ -131,11 +131,19 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			return;
 		case GLFW_KEY_D:
 			// toggle details
-		//	deformationSpace_->set_smoothing_strength(deformationSpace_->get_smoothing_strength() * 2.f);
 			showDetails_ = !showDetails_;
 			deformationSpace_->show_details(showDetails_);
 			meshIsDirty_ |= MeshUpdate::Geometry;
 			return;
+		case GLFW_KEY_Z:
+		case GLFW_KEY_Y: // glfw assumes american layout
+			if (mods & GLFW_MOD_CONTROL)
+			{
+				deformationSpace_->reset_handle();
+				meshIsDirty_ |= MeshUpdate::Geometry;
+				compute_translation_normal();
+				return;
+			}
 		}
 	}
 

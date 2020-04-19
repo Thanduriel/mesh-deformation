@@ -58,9 +58,8 @@ namespace algorithm {
 		compute_boundary_set(3);
 		for (Vertex v : boundaryVertices_) { idx_[v] = index++; }
 
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-		for (Vertex v : supportVertices_) initialPositions_[v] = points[v];
-		for (Vertex v : handleVertices_) initialPositions_[v] = points[v];
+		for (Vertex v : supportVertices_) initialPositions_[v] = points_[v];
+		for (Vertex v : handleVertices_) initialPositions_[v] = points_[v];
 
 		smoothnessScale_.setIdentity();
 
@@ -136,8 +135,7 @@ namespace algorithm {
 
 	void Deformation::translate(const pmp::Normal& translation)
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-		for (Vertex v : handleVertices_) points[v] += translation;
+		for (Vertex v : handleVertices_) points_[v] += translation;
 
 		for (int i = 0; i < 4; ++i) affineFrame_[i] += translation;
 
@@ -146,12 +144,10 @@ namespace algorithm {
 
 	void Deformation::scale(Scalar scale)
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-
 		for (size_t i = 0; i < handleVertices_.size(); i++)
 		{
 			auto v = handleVertices_[i];
-			points[v] = centerScale_ + (originScaleVertices_[i] - centerScale_) * scale;
+			points_[v] = centerScale_ + (originScaleVertices_[i] - centerScale_) * scale;
 		}
 		for (size_t i = 0; i < affineFrame_.size(); i++)
 		{
@@ -164,19 +160,17 @@ namespace algorithm {
 
 	void Deformation::rotate(const Normal& axis, Scalar angle)
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-
 		Point p(0.f);
-		for (Vertex v : handleVertices_) p += points[v];
+		for (Vertex v : handleVertices_) p += points_[v];
 		p /= handleVertices_.size();
 
 		mat4 rotMat = rotation_matrix(axis, angle);
 
 		for (Vertex v : handleVertices_)
 		{
-			vec3 transVertex = points[v] - p;
+			vec3 transVertex = points_[v] - p;
 			vec4 rotVertex = rotMat * vec4(transVertex, 0);
-			points[v] = vec3(rotVertex[0], rotVertex[1], rotVertex[2]) + p;
+			points_[v] = vec3(rotVertex[0], rotVertex[1], rotVertex[2]) + p;
 		}
 		for (Point& fp : affineFrame_)
 		{
@@ -190,17 +184,16 @@ namespace algorithm {
 
 	void Deformation::reset_scale_origin()
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
 		originScaleVertices_.clear();
 		originScaleFrame_.clear();
 
 		// find center point
 		centerScale_ = Point(0.0f);
-		for (Vertex v : handleVertices_) centerScale_ += points[v];
+		for (Vertex v : handleVertices_) centerScale_ += points_[v];
 		centerScale_ /= handleVertices_.size();
 
 		for (Vertex v : handleVertices_)
-			originScaleVertices_.push_back(points[v]);
+			originScaleVertices_.push_back(points_[v]);
 
 		for (Point p : affineFrame_)
 			originScaleFrame_.push_back(p);
@@ -254,8 +247,6 @@ namespace algorithm {
 
 	void Deformation::update_support_region()
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-
 		DenseMatrix X;
 		if (useBasisFunctions_)
 		{
@@ -278,7 +269,7 @@ namespace algorithm {
 			for (Vertex v : handleVertices_)
 			{
 				const int i = idx_[v] - numFree;
-				const Point p = points[v];
+				const Point p = points_[v];
 				x2(i, 0) = p[0];
 				x2(i, 1) = p[1];
 				x2(i, 2) = p[2];
@@ -365,9 +356,7 @@ namespace algorithm {
 		
 		solver_.compute(laplace1_);
 
-			// precomputed basis functions
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-
+		// precomputed basis functions
 		useBasisFunctions_ = compute_affine_frame();
 		if (useBasisFunctions_)
 		{
@@ -394,7 +383,7 @@ namespace algorithm {
 		for (Vertex v : boundaryVertices_)
 		{
 			const int i = idx_[v] - numFree;
-			const Point p = points[v];
+			const Point p = points_[v];
 			x3(i, 0) = p[0];
 			x3(i, 1) = p[1];
 			x3(i, 2) = p[2];
@@ -472,8 +461,6 @@ namespace algorithm {
 
 	bool Deformation::compute_affine_frame()
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-
 		affineFrame_[0] = pmp::Point(0.0, 0.0, 0.0);
 		affineFrame_[1] = pmp::Point(1.0, 0.0, 0.0);
 		affineFrame_[2] = pmp::Point(0.0, 1.0, 0.0);
@@ -489,7 +476,7 @@ namespace algorithm {
 		DenseMatrix h(handleVertices_.size(), 4);
 		for (size_t i = 0; i < handleVertices_.size(); ++i)
 		{
-			const Point p = points[handleVertices_[i]];
+			const Point p = points_[handleVertices_[i]];
 			h(i, 0) = p[0];
 			h(i, 1) = p[1];
 			h(i, 2) = p[2];
@@ -508,11 +495,10 @@ namespace algorithm {
 
 	void Deformation::update_details()
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
 		if (showDetails_)
 		{
 			// compute new normals of the low resolution mesh
-			for (Vertex v : supportVertices_) points[v] = lowResPositions_[v];
+			for (Vertex v : supportVertices_) points_[v] = lowResPositions_[v];
 			auto displacements = mesh_.add_vertex_property<Normal>("v:displacement");
 			for (Vertex v : supportVertices_)
 			{
@@ -522,43 +508,40 @@ namespace algorithm {
 
 			// apply offsets to restore details
 			for (Vertex v : supportVertices_)
-				points[v] = lowResPositions_[v] + displacements[v];
+				points_[v] = lowResPositions_[v] + displacements[v];
 
 			mesh_.remove_vertex_property(displacements);
 		}
 		else
 		{
 			for (Vertex v : supportVertices_)
-				points[v] = lowResPositions_[v];
+				points_[v] = lowResPositions_[v];
 		}
 	}
 
 	void Deformation::store_details()
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
 		const size_t numFree = supportVertices_.size();
 
 		// store low res positions for normal computations
 		for (Vertex v : supportVertices_) 
-			points[v] = lowResPositions_[v];
+			points_[v] = lowResPositions_[v];
 
 		// compute displacements in a local frame
 		for (Vertex v : supportVertices_)
 		{
 			auto& [n, b2, b3] = local_frame(v);
-			const Normal d = initialPositions_[v] - points[v];
+			const Normal d = initialPositions_[v] - points_[v];
 			detailVectors_[v] = pmp::Normal(dot(d, n), dot(d, b2), dot(d, b3));
 		}
 
 		// restore high resolution representation
 		for (Vertex v : supportVertices_) 
-			points[v] = initialPositions_[v];
+			points_[v] = initialPositions_[v];
 	}
 
 	void Deformation::implicit_smoothing(Scalar timeStep)
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-
 		const std::size_t numFree = supportVertices_.size();
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 		
@@ -566,7 +549,7 @@ namespace algorithm {
 		for(Vertex v : supportVertices_)
 		{
 			const int i = idx_[v];
-			const Point p = points[v];
+			const Point p = points_[v];
 			x1(i, 0) = p[0];
 			x1(i, 1) = p[1];
 			x1(i, 2) = p[2];
@@ -576,7 +559,7 @@ namespace algorithm {
 		for (Vertex v : handleVertices_)
 		{
 			const int i = idx_[v] - numFree;
-			const Point p = points[v];
+			const Point p = points_[v];
 			x2(i, 0) = p[0];
 			x2(i, 1) = p[1];
 			x2(i, 2) = p[2];
@@ -584,7 +567,7 @@ namespace algorithm {
 		for (Vertex v : boundaryVertices_)
 		{
 			const int i = idx_[v] - numFree;
-			const Point p = points[v];
+			const Point p = points_[v];
 			x2(i, 0) = p[0];
 			x2(i, 1) = p[1];
 			x2(i, 2) = p[2];
@@ -625,12 +608,10 @@ namespace algorithm {
 
 	std::tuple<Normal, Normal, Normal> Deformation::local_frame(Vertex v) const
 	{
-		auto points = mesh_.get_vertex_property<Point>("v:point");
-
 		const Normal n = SurfaceNormals::compute_vertex_normal(mesh_, v);
 		const Halfedge h = *mesh_.halfedges(v).begin();
 		const Vertex vv = mesh_.to_vertex(h);
-		const Normal b2 = normalize(cross(n, points[vv] - points[v]));
+		const Normal b2 = normalize(cross(n, points_[vv] - points_[v]));
 		const Normal b3 = normalize(cross(n, b2));
 
 		return { n,b2,b3 };

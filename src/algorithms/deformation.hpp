@@ -12,6 +12,7 @@ namespace algorithm {
 	class Deformation
 	{
 	public:
+		// Construct a deformation operator on the given mesh.
 		Deformation(pmp::SurfaceMesh& mesh);
 		~Deformation();
 
@@ -25,7 +26,7 @@ namespace algorithm {
 		// Does not change the mesh.
 		void reset_regions();
 
-		// Revertes the mesh to the state of the last set_regions() call,
+		// Reverts the mesh to the state of the last set_regions() call,
 		// canceling changes to the handle.
 		void reset_handle();
 
@@ -111,14 +112,14 @@ namespace algorithm {
 		pmp::VertexProperty<pmp::Scalar> smoothness_;
 		pmp::VertexProperty<pmp::Normal> detailVectors_; //< details in a local frame of the high resolution mesh
 		pmp::VertexProperty<pmp::Point> lowResPositions_; //< positions in the low resolution representation
-		pmp::VertexProperty<pmp::Point> initialPositions_; //< original positions at the time of set_regions().
-		pmp::VertexProperty<pmp::Point> points_; //< standard point property "v:point" for convenience.
+		pmp::VertexProperty<pmp::Point> initialPositions_; //< original positions at the time of set_regions()
+		pmp::VertexProperty<pmp::Point> points_; //< standard point property "v:point" for convenience
 
 		// Laplace operator
-		SparseMatrixR laplacian_;
+		SparseMatrixR laplacian_; //< symmetric laplacian
 		SparseMatrix laplace1_; //< free vertices
 		SparseMatrix laplace2_; //< fixed vertices
-		DiagonalMatrix areaScale_;
+		DiagonalMatrix areaScale_; //< inverse Voronoi area
 		DiagonalMatrix areaScale1Inv_; //< scale for only the free vertices
 		DiagonalMatrix smoothnessScale_;
 		Eigen::SparseLU<SparseMatrix> solver_; // SparseLU, SimplicialLLT, SimplicialLDLT
@@ -139,7 +140,7 @@ namespace algorithm {
 
 		// smoothing related
 		bool showDetails_ = true;
-		int smoothingOrder_ = 1;
+		int smoothingOrder_ = 2;
 		pmp::Scalar smoothingTimeStep_ = 0.000001;
 	};
 }

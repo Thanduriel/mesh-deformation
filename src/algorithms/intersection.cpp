@@ -27,13 +27,15 @@ namespace algorithm {
 	inline int float_to_int_cast(float f)
 	{
 		static_assert(sizeof(float) == sizeof(int));
+
+		// std conform reinterpret cast
 		int res;
 		memcpy(&res, &f, sizeof(float));
 		return res;
 		//return *reinterpret_cast<int*>(&f);
 	}
 
-	static bool intersect(vec3 o, vec3 d, float* t, float maxDist, const IntersectionTriangle& D)
+	static bool intersect(vec3 o, vec3 d, float* t, const IntersectionTriangle& D)
 	{
 		vec2 uv;
 
@@ -54,22 +56,22 @@ namespace algorithm {
 		uv[0] *= rdet;
 		uv[1] *= rdet;
 		*t = dett * rdet;
-		return true;//*t >= 0.f && *t <= maxDist;
+		return true;
 	}
 
 	std::optional<float> intersect(const Ray& ray, 
-		const pmp::vec3& p0, const pmp::vec3& p1, const pmp::vec3& p2, float maxDist)
+		const pmp::vec3& p0, const pmp::vec3& p1, const pmp::vec3& p2)
 	{
 		const IntersectionTriangle triangle(p0, p1, p2);
 		
-		return intersect(ray, triangle, maxDist);	
+		return intersect(ray, triangle);	
 	}
 
 	std::optional<float> intersect(const Ray& ray,
-		const IntersectionTriangle& triangle, float maxDist)
+		const IntersectionTriangle& triangle)
 	{
 		float dist;
-		return intersect(ray.origin, ray.direction, &dist, maxDist, triangle)
+		return intersect(ray.origin, ray.direction, &dist, triangle)
 			? std::optional<float>(dist) : std::nullopt;
 
 	}
@@ -77,6 +79,7 @@ namespace algorithm {
 	std::optional<float> intersect(const Ray& ray, const vec3& p0, const vec3& n)
 	{
 		const float den = dot(ray.direction, n);
+		// almost parallel
 		if (std::abs(den) < std::numeric_limits<float>::epsilon() * 16.f)
 			return std::nullopt;
 

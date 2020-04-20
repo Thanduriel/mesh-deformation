@@ -26,13 +26,14 @@ namespace algorithm {
 	std::optional<float> intersect(const Ray& ray, 
 		const pmp::vec3& p0, 
 		const pmp::vec3& p1, 
-		const pmp::vec3& p2, 
-		float maxDist);
+		const pmp::vec3& p2);
 
 	std::optional<float> intersect(const Ray& ray,
-		const IntersectionTriangle& _triangle,
-		float maxDist);
+		const IntersectionTriangle& _triangle);
 
+	// Ray plane intersection.
+	// @param p0 Any point on the plane.
+	// @param n The normal of the plane.
 	std::optional<float> intersect(const Ray& ray,
 		const pmp::vec3& p0,
 		const pmp::vec3& n);

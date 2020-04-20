@@ -465,7 +465,7 @@ std::optional<float> ModifierHandle::is_hit(const Ray& ray, mat4 modelMatrixInve
 
 	for (Face f : mesh.faces())
 	{
-		auto scalar = algorithm::intersect(localRay, triangles[f], 10000.f);
+		auto scalar = algorithm::intersect(localRay, triangles[f]);
 		if (scalar)
 		{
 			return scalar;

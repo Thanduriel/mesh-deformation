@@ -281,65 +281,138 @@ bool ModifierHandle::is_hit(const Ray& ray)
 	remove_selection();
 
 	std::optional<float> rayResult = std::nullopt;
+	std::optional<float> rayResultHelp = std::nullopt;
+	bool hit = false;
 
 	if (is_translationMode())
 	{
-		if (rayResult = is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_))
+		if (rayResultHelp = is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_))
 		{
-			mode_ = EMode::Translation_X;
-			set_selection(arrowMesh_LocalX_);
+			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
+			{
+				mode_ = EMode::Translation_X;
+				rayResult = rayResultHelp;
+				hit = true;
+			}
 		}
-		else if (rayResult = is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_))
+		if (rayResultHelp = is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_))
 		{
-			mode_ = EMode::Translation_Y;
-			set_selection(arrowMesh_LocalY_);
+			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
+			{
+				mode_ = EMode::Translation_Y;
+				rayResult = rayResultHelp;
+				hit = true;
+			}
 		}
-		else if (rayResult = is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_))
+		if (rayResultHelp = is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_))
 		{
-			mode_ = EMode::Translation_Z;
-			set_selection(arrowMesh_LocalZ_);
+			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
+			{
+				mode_ = EMode::Translation_Z;
+				rayResult = rayResultHelp;
+				hit = true;
+			}
 		}
 	}
 	else if (is_rotationMode())
 	{
-		if (rayResult = is_hit(ray, modelMatrixInverseRotationX_, torusMesh_RotationX_))
+		if (rayResultHelp = is_hit(ray, modelMatrixInverseRotationX_, torusMesh_RotationX_))
 		{
-			mode_ = EMode::Rotation_X;
-			set_selection(torusMesh_RotationX_);
+			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
+			{
+				mode_ = EMode::Rotation_X;
+				rayResult = rayResultHelp;
+				hit = true;
+			}
 		}
-		else if (rayResult = is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_))
+		if (rayResultHelp = is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_))
 		{
-			mode_ = EMode::Rotation_Y;
-			set_selection(torusMesh_RotationY_);
+			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
+			{
+				mode_ = EMode::Rotation_Y;
+				rayResult = rayResultHelp;
+				hit = true;
+			}
 		}
-		else if (rayResult = is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_))
+		if (rayResultHelp = is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_))
 		{
-			mode_ = EMode::Rotation_Z;
-			set_selection(torusMesh_RotationZ_);
+			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
+			{
+				mode_ = EMode::Rotation_Z;
+				rayResult = rayResultHelp;
+				hit = true;
+			}
 		}
 	}
 	else if (is_scaleMode())
 	{
-		if (rayResult = is_hit(ray, modelMatrixScaleInverseX_, scaleMesh_ScaleX_))
+		if (rayResultHelp = is_hit(ray, modelMatrixScaleInverseX_, scaleMesh_ScaleX_))
 		{
-			mode_ = EMode::Scale_X;
-			set_selection(scaleMesh_ScaleX_);
+			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
+			{
+				mode_ = EMode::Scale_X;
+				rayResult = rayResultHelp;
+				hit = true;
+			}
 		}
-		else if (rayResult = is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_))
+		if (rayResultHelp = is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_))
 		{
-			mode_ = EMode::Scale_Y;
-			set_selection(scaleMesh_ScaleY_);
+			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
+			{
+				mode_ = EMode::Scale_Y;
+				rayResult = rayResultHelp;
+				hit = true;
+			}
 		}
 	}
 
-
+	if (hit)
+	{
+		switch (mode_)
+		{
+		case ModifierHandle::EMode::None:
+			break;
+		case ModifierHandle::EMode::Translation_X:
+			set_selection(arrowMesh_LocalX_);
+			break;
+		case ModifierHandle::EMode::Translation_Y:
+			set_selection(arrowMesh_LocalY_);
+			break;
+		case ModifierHandle::EMode::Translation_Z:
+			set_selection(arrowMesh_LocalZ_);
+			break;
+		case ModifierHandle::EMode::Rotation_X:
+			set_selection(torusMesh_RotationX_);
+			break;
+		case ModifierHandle::EMode::Rotation_Y:
+			set_selection(torusMesh_RotationY_);
+			break;
+		case ModifierHandle::EMode::Rotation_Z:
+			set_selection(torusMesh_RotationZ_);
+			break;
+		case ModifierHandle::EMode::Scale_X:
+			set_selection(scaleMesh_ScaleX_);
+			break;
+		case ModifierHandle::EMode::Scale_Y:
+			set_selection(scaleMesh_ScaleY_);
+			break;
+		case ModifierHandle::EMode::Scale_Z:
+			break;
+		default:
+			break;
+		}
+	}
 	if (rayResult)
 	{
+		std::cout << "True" << std::endl;
 		last_hit_point_ = ray.origin + ray.direction * rayResult.value();
 		return true;
 	}
 	else
+	{
+		std::cout << "False" << std::endl;
 		return false;
+	}
 }
 
 void ModifierHandle::precompute_modelViewMatrix()

@@ -26,6 +26,17 @@ VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int h
 	add_draw_mode("Smooth Shading");
 	add_draw_mode("Wireframe");
 	set_draw_mode("Smooth Shading");
+
+	add_help_item("CTRL + Z", "Undo last action");
+	add_help_item("BACKSPACE", "Reload mesh");
+	add_help_item("Q", "Handle region brush");
+	add_help_item("W", "Support region brush");
+	add_help_item("E", "Clear region brush");
+	add_help_item("R", "Activate view mode");
+	add_help_item("SPACE", "Activate deformation mode");
+	add_help_item("T", "Activate translation mode");
+	add_help_item("S", "Activate scale mode");
+	add_help_item("R", "Activate rotation mode");
 }
 
 VertexSelectionViewer::~VertexSelectionViewer()

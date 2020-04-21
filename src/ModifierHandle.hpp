@@ -1,11 +1,9 @@
 #pragma once
 
-#define _USE_MATH_DEFINES
-#include <math.h> // pmp expects M_PI 
 #include "algorithms/intersection.hpp"
-#include "pmp/visualization/MeshViewer.h"
-#include "imgui.h"
-#include <SurfaceColorMesh.hpp>
+#include "SurfaceColorMesh.hpp"
+#include <pmp/visualization/MeshViewer.h>
+#include <imgui.h>
 #include <memory>
 #include <unordered_set>
 

@@ -513,7 +513,6 @@ void VertexSelectionViewer::translationHandle(float xpos, float ypos)
 	if ((ypos > 0 || xpos > 0) && norm(mouseMotion) > 0)
 	{
 		const Ray ray = get_ray(xpos, ypos);
-		vec2 midScreen = vec2(width() / 2, height() / 2);
 		vec3 normal = compute_WorldCoordinates(startPos, 0.0f) - meshHandle_.get_last_hit_point();
 		normal.normalize();
 
@@ -629,7 +628,6 @@ Ray VertexSelectionViewer::get_ray(int x, int y)
 
 bool VertexSelectionViewer::init_modifier()
 {
-	auto points = mesh_.get_vertex_property<Point>("v:point");
 	auto colors = mesh_.get_vertex_property<Color>("v:col");
 	std::vector<Vertex> supportVertices;
 	std::vector<Vertex> handleVertices;

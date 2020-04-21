@@ -1,6 +1,8 @@
 #pragma once
 
-#include "pmp/MatVec.h"
+#define _USE_MATH_DEFINES
+#include <math.h> // pmp expects M_PI 
+#include <pmp/MatVec.h>
 #include <optional>
 
 struct Ray

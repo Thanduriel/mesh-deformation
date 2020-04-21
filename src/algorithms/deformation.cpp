@@ -151,7 +151,6 @@ namespace algorithm {
 		}
 		for (size_t i = 0; i < affineFrame_.size(); i++)
 		{
-			auto fp = affineFrame_[i];
 			affineFrame_[i] = centerScale_ + (originScaleFrame_[i] - centerScale_) * scale;
 		}
 
@@ -502,7 +501,7 @@ namespace algorithm {
 			auto displacements = mesh_.add_vertex_property<Normal>("v:displacement");
 			for (Vertex v : supportVertices_)
 			{
-				auto& [b1, b2, b3] = local_frame(v);
+				const auto& [b1, b2, b3] = local_frame(v);
 				displacements[v] = b1 * detailVectors_[v][0] + b2 * detailVectors_[v][1] + b3 * detailVectors_[v][2];
 			}
 
@@ -521,8 +520,6 @@ namespace algorithm {
 
 	void Deformation::store_details()
 	{
-		const size_t numFree = supportVertices_.size();
-
 		// store low res positions for normal computations
 		for (Vertex v : supportVertices_) 
 			points_[v] = lowResPositions_[v];
@@ -530,7 +527,7 @@ namespace algorithm {
 		// compute displacements in a local frame
 		for (Vertex v : supportVertices_)
 		{
-			auto& [n, b2, b3] = local_frame(v);
+			const auto& [n, b2, b3] = local_frame(v);
 			const Normal d = initialPositions_[v] - points_[v];
 			detailVectors_[v] = pmp::Normal(dot(d, n), dot(d, b2), dot(d, b3));
 		}

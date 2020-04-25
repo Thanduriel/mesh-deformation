@@ -6,6 +6,7 @@
 
 using namespace pmp;
 
+// Colors to paint the different regions for VertexDrawingMode with.
 const std::array<Color, static_cast<size_t>(VertexSelectionViewer::VertexDrawingMode::COUNT)> COLORS =
 {
 	Color(0.f,0.f,0.f),
@@ -25,18 +26,35 @@ VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int h
 	clear_draw_modes();
 	add_draw_mode("Smooth Shading");
 	add_draw_mode("Wireframe");
-	set_draw_mode("Smooth Shading");
+	add_draw_mode("Points");
+	set_draw_mode("Solid Smooth");
 
-	add_help_item("CTRL + Z", "Undo last action");
+	// contains some keys that are overwritten with a different functionality
+	clear_help_items();
+	// Trackballviewer + Window functions
+	add_help_item("LEFT/RIGHT", "Rotate model horizontally");
+	add_help_item("UP/DOWN", "Rotate model vertically");
+	add_help_item("F", "Toggle fullscreen mode");
+	add_help_item("G", "Toggle GUI dialog");
+	add_help_item("PAGEUP/DOWN", "Scale GUI dialogs");
+	add_help_item("PrtScr", "Save screenshot");
+	add_help_item("ESC", "Quit application");
+
+	add_help_item("1", "Draw solid");
+	add_help_item("2", "Draw wireframe");
+	add_help_item("3", "Draw points");
+
 	add_help_item("BACKSPACE", "Reload mesh");
 	add_help_item("Q", "Handle region brush");
 	add_help_item("W", "Support region brush");
 	add_help_item("E", "Clear region brush");
 	add_help_item("R", "Activate view mode");
-	add_help_item("SPACE", "Activate deformation mode");
+	add_help_item("SPACE", "Switch deformation mode / drawing mode");
+	add_help_item("CTRL + Z", "Undo last modification");
 	add_help_item("T", "Activate translation mode");
 	add_help_item("S", "Activate scale mode");
 	add_help_item("R", "Activate rotation mode");
+	add_help_item("D", "Toggle details");
 }
 
 VertexSelectionViewer::~VertexSelectionViewer()
@@ -68,6 +86,7 @@ void VertexSelectionViewer::do_processing()
 
 void VertexSelectionViewer::draw(const std::string& draw_mode)
 {
+	// update buffers as necessary
 	if (meshIsDirty_ & MeshUpdate::Geometry)
 		update_mesh();
 	if (meshIsDirty_ & MeshUpdate::VertexColor)
@@ -158,7 +177,7 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 		}
 	}
 
-	// mode independend inputs
+	// mode independent inputs
 	switch (key)
 	{
 	case GLFW_KEY_BACKSPACE: // reload model
@@ -172,8 +191,11 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 	case GLFW_KEY_2:
 		set_draw_mode("Wireframe");
 		break;
+	case GLFW_KEY_3:
+		set_draw_mode("Points");
+		break;
 	default:
-		// Q would close the window
+		// Q would close the window otherwise
 		if (key != GLFW_KEY_Q)
 			TrackballViewer::keyboard(key, scancode, action, mods);
 	}
@@ -188,6 +210,7 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 	// load mesh
 	if (mesh_.read(filename))
 	{
+		
 		strcpy_s(fileNameBuffer_, filename);
 
 		// update scene center and bounds
@@ -202,11 +225,12 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		// set draw mode
 		if (mesh_.n_faces())
 		{
-			set_draw_mode("Solid Smooth");
+			set_draw_mode("Smooth Shading");
 		}
 		else if (mesh_.n_vertices())
 		{
 			set_draw_mode("Points");
+			std::cout << "Warning: The mesh has no faces and modifications will not work.\n";
 		}
 
 		// print mesh statistic

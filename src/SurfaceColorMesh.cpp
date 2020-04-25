@@ -44,7 +44,7 @@ SurfaceColorMesh::~SurfaceColorMesh()
 	glDeleteVertexArrays(1, &vertex_array_object_);
 }
 
-void SurfaceColorMesh::draw(const mat4& projection_matrix, const mat4& modelview_matrix, const std::string draw_mode)
+void SurfaceColorMesh::draw(const mat4& projection_matrix, const mat4& modelview_matrix, const std::string& draw_mode)
 {
 	// did we generate buffers already?
 	if (!vertex_array_object_)

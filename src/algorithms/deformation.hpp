@@ -123,8 +123,8 @@ namespace algorithm {
 		DiagonalMatrix areaScale1Inv_; //< scale for only the free vertices
 		DiagonalMatrix smoothnessScale_;
 		Eigen::SparseLU<SparseMatrix> solver_; // SparseLU, SimplicialLLT, SimplicialLDLT
-		int laplaceOrder_;
-		bool useAreaScaling_ = false;
+		int laplaceOrder_ = 2;
+		bool useAreaScaling_ = true;
 
 		// precomputed basis functions
 		DenseMatrix localHandle_;

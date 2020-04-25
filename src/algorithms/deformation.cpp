@@ -20,8 +20,7 @@ namespace algorithm {
 		points_(mesh_.get_vertex_property<Point>("v:point")),
 		laplacian_(mesh.n_vertices(), mesh.n_vertices()),
 		areaScale_(mesh.n_vertices()),
-		smoothnessScale_(mesh.n_vertices()),
-		laplaceOrder_(3)
+		smoothnessScale_(mesh.n_vertices())
 	{
 		int index = 0;
 		for (Vertex v : mesh_.vertices()) meshIdx_[v] = index++;
@@ -334,6 +333,8 @@ namespace algorithm {
 
 	void Deformation::compute_higher_order()
 	{
+		auto start = std::chrono::high_resolution_clock::now();
+
 		const std::size_t numFree = supportVertices_.size();
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
@@ -393,6 +394,9 @@ namespace algorithm {
 		boundarySolution_ = solver_.solve(B2);
 		if (solver_.info() != Eigen::Success)
 			std::cerr << "Deformation: Could not solve linear system for boundary vertices.\n";
+
+		auto end = std::chrono::high_resolution_clock::now();
+		std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
 	}
 
 	void Deformation::decompose_operator(const SparseMatrixR& lOperator, SparseMatrix& l1, SparseMatrix& l2) const

@@ -392,6 +392,7 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 
 void VertexSelectionViewer::process_imgui()
 {
+	// general file handling
 	ImGui::InputText("", fileNameBuffer_, 512);
 	if (ImGui::Button("open"))
 	{
@@ -403,6 +404,7 @@ void VertexSelectionViewer::process_imgui()
 		mesh_.write(fileNameBuffer_);
 	}
 
+	// region selection
 	if (viewerMode_ == ViewerMode::View && ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		constexpr static const char* VERTEX_DRAW_NAMES[] = { "View [R]", "Clear [E]", "Handle [Q]", "Support [W]" };
@@ -427,11 +429,20 @@ void VertexSelectionViewer::process_imgui()
 		const BoundingBox bb = mesh_.bounds();
 		ImGui::SliderFloat("brush size", &brushSize_, 0.0001, bb.size() * 0.5);
 	}
+
+	// modifications
 	if (viewerMode_ != ViewerMode::View && ImGui::CollapsingHeader("Operator", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		// smoothing related
 		if (ImGui::Checkbox("show details [D]", &showDetails_))
 		{
 			deformationSpace_->show_details(showDetails_);
+			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+		if (ImGui::InputInt("search ring", &detailFrameSearchRadius_))
+		{
+			detailFrameSearchRadius_ = std::max(0, detailFrameSearchRadius_);
+			deformationSpace_->set_frame_search_depth(detailFrameSearchRadius_);
 			meshIsDirty_ |= MeshUpdate::Geometry;
 		}
 		if (ImGui::SliderFloat("strength", &detailStrength_, 0.0000001f, 100.f, "%.3g", 10.f))
@@ -676,6 +687,7 @@ bool VertexSelectionViewer::init_modifier()
 	deformationSpace_->set_regions(supportVertices, handleVertices);
 	detailStrength_ = deformationSpace_->get_smoothing_strength();
 	showDetails_ = deformationSpace_->is_showing_details();
+	detailFrameSearchRadius_ = deformationSpace_->get_frame_search_depth();
 	operatorOrder_ = deformationSpace_->get_order();
 	smoothingOrder_ = deformationSpace_->get_smoothing_order();
 	useAreaScaling_ = deformationSpace_->get_area_scaling();

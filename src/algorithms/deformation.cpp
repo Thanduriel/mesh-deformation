@@ -3,6 +3,7 @@
 #include <pmp/algorithms/SurfaceNormals.h>
 #include <chrono>
 #include <Eigen/Dense>
+#include <unordered_set>
 
 namespace algorithm {
 
@@ -18,6 +19,8 @@ namespace algorithm {
 		lowResPositions_(mesh_.add_vertex_property<Point>("v:lowResPosition")),
 		initialPositions_(mesh_.add_vertex_property<Point>("v:initPosition")),
 		points_(mesh_.get_vertex_property<Point>("v:point")),
+		localFrames_(mesh.add_vertex_property<Basis>("v:localFrame")),
+		localFrameIdx_(mesh.add_vertex_property<Vertex>("v:localFrameIdx")),
 		laplacian_(mesh.n_vertices(), mesh.n_vertices()),
 		areaScale_(mesh.n_vertices()),
 		smoothnessScale_(mesh.n_vertices())
@@ -217,9 +220,7 @@ namespace algorithm {
 				points_[v] = initialPositions_[v];
 			}
 
-		//	update_support_region();
 			implicit_smoothing(smoothingTimeStep_);
-			store_details();
 			
 			for (Vertex v : handleVertices_)
 				points_[v] = tempPoints[v];
@@ -241,6 +242,13 @@ namespace algorithm {
 		showDetails_ = show;
 
 		update_details();
+	}
+
+	void Deformation::set_frame_search_depth(int useNearest)
+	{
+		searchNearestRing_ = useNearest;
+
+		set_smoothing_strength(smoothingTimeStep_);
 	}
 
 	void Deformation::update_support_region()
@@ -505,13 +513,13 @@ namespace algorithm {
 			auto displacements = mesh_.add_vertex_property<Normal>("v:displacement");
 			for (Vertex v : supportVertices_)
 			{
-				const auto& [b1, b2, b3] = local_frame(v);
+				const auto& [b1, b2, b3] = local_frame(localFrameIdx_[v]);
 				displacements[v] = b1 * detailVectors_[v][0] + b2 * detailVectors_[v][1] + b3 * detailVectors_[v][2];
 			}
 
 			// apply offsets to restore details
 			for (Vertex v : supportVertices_)
-				points_[v] = lowResPositions_[v] + displacements[v];
+				points_[v] = lowResPositions_[localFrameIdx_[v]] + displacements[v];
 
 			mesh_.remove_vertex_property(displacements);
 		}
@@ -524,21 +532,76 @@ namespace algorithm {
 
 	void Deformation::store_details()
 	{
+		auto start = std::chrono::high_resolution_clock::now();
 		// store low res positions for normal computations
 		for (Vertex v : supportVertices_) 
 			points_[v] = lowResPositions_[v];
 
-		// compute displacements in a local frame
+		for (Vertex v : supportVertices_)
+			localFrames_[v] = local_frame(v);
+		
+		auto marks = mesh_.add_vertex_property<bool>("v:tempMark", false);
+
 		for (Vertex v : supportVertices_)
 		{
-			const auto& [n, b2, b3] = local_frame(v);
-			const Normal d = initialPositions_[v] - points_[v];
-			detailVectors_[v] = pmp::Normal(dot(d, n), dot(d, b2), dot(d, b3));
+			Normal dMin = initialPositions_[v] - points_[v];
+			float lenSqMin = sqrnorm(dMin);
+			Vertex frameIdx = v;
+			
+			// find point in the new mesh which is closest to the old position in the n-ring
+			if (searchNearestRing_)
+			{
+				// collect vertices in the n-ring
+				std::vector<Vertex> vertices;
+				vertices.push_back(v);
+				marks[v] = true;
+				size_t begin = 0;
+
+				for (int i = 0; i < searchNearestRing_; ++i)
+				{
+					const size_t end = vertices.size();
+					for (size_t j = begin; j < end; ++j)
+					{
+						for (auto h : mesh_.halfedges(vertices[j]))
+						{
+							const Vertex vv = mesh_.to_vertex(h);
+							if (typeMarks_[vv] == VertexType::Support && !marks[vv])
+							{
+								marks[vv] = true;
+								vertices.push_back(vv);
+							}
+						}
+					}
+					begin = end;
+				}
+
+				// find nearest point
+				for (Vertex vv : vertices)
+				{
+					marks[vv] = false;
+					const Normal d = initialPositions_[v] - points_[vv];
+					const float lenSq = sqrnorm(d);
+					if (lenSq < lenSqMin)
+					{
+						dMin = d;
+						lenSqMin = lenSq;
+						frameIdx = vv;
+					}
+				}
+			}
+			// compute displacements in a local frame
+			const auto& [n, b2, b3] = localFrames_[frameIdx];
+			detailVectors_[v] = Normal(dot(dMin, n), dot(dMin, b2), dot(dMin, b3));
+			localFrameIdx_[v] = frameIdx;
 		}
+
+		mesh_.remove_vertex_property(marks);
 
 		// restore high resolution representation
 		for (Vertex v : supportVertices_) 
 			points_[v] = initialPositions_[v];
+		auto end = std::chrono::high_resolution_clock::now();
+		std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
 	}
 
 	void Deformation::implicit_smoothing(Scalar timeStep)

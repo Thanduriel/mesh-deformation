@@ -65,6 +65,9 @@ namespace algorithm {
 		// Should details be added to the vertices in the support region.
 		void show_details(bool show);
 		bool is_showing_details() const { return showDetails_; }
+		// Store details in the local frame or search in the neighborhood for the shortest displacement.
+		void set_frame_search_depth(int nRing);
+		int get_frame_search_depth() const { return searchNearestRing_; }
 	private:
 		// matrix types in use
 		using MatScalar = double; // scalar type for equation system solving
@@ -96,7 +99,8 @@ namespace algorithm {
 		void implicit_smoothing(pmp::Scalar timeStep);
 		// Computes a local frame based on the vertex normal and one edge.
 		// @return The normalized orthogonal basis vectors.
-		std::tuple<pmp::Normal, pmp::Normal, pmp::Normal> local_frame(pmp::Vertex v) const;
+		using Basis = std::tuple<pmp::Normal, pmp::Normal, pmp::Normal>;
+		Basis local_frame(pmp::Vertex v) const;
 
 		// mesh and modifier regions
 		pmp::SurfaceMesh& mesh_;
@@ -114,6 +118,8 @@ namespace algorithm {
 		pmp::VertexProperty<pmp::Point> lowResPositions_; //< positions in the low resolution representation
 		pmp::VertexProperty<pmp::Point> initialPositions_; //< original positions at the time of set_regions()
 		pmp::VertexProperty<pmp::Point> points_; //< standard point property "v:point" for convenience
+		pmp::VertexProperty<pmp::Vertex> localFrameIdx_;
+		pmp::VertexProperty<Basis> localFrames_;
 
 		// Laplace operator
 		SparseMatrixR laplacian_; //< symmetric laplacian
@@ -140,7 +146,8 @@ namespace algorithm {
 
 		// smoothing related
 		bool showDetails_ = true;
+		int searchNearestRing_ = 1;
 		int smoothingOrder_ = 2;
-		pmp::Scalar smoothingTimeStep_ = 0.000001;
+		pmp::Scalar smoothingTimeStep_ = 0.001;
 	};
 }

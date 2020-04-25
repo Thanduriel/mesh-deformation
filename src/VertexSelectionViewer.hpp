@@ -97,6 +97,7 @@ private:
 	float brushSize_;
 	float detailStrength_ = 0.001;
 	bool showDetails_ = true;
+	int detailFrameSearchRadius_;
 	int operatorOrder_ = 3;
 	int smoothingOrder_ = 1;
 	float smoothnessHandle_ = 2.f;
@@ -106,7 +107,7 @@ private:
 	const char* currentModifierItem_ = nullptr;
 	char fileNameBuffer_[512] = {};
 
-	util::Octree<pmp::Vertex, 4> queryTree_;
+	util::Octree<pmp::Vertex, 4> queryTree_; // point tree for fast local searches
 	std::unique_ptr<algorithm::Deformation> deformationSpace_;
 	std::string filename_;
 	ViewerMode viewerMode_;

@@ -31,4 +31,13 @@
 *.out
 *.app
 
+# Latex
+*.out
+*.log
+*.gz
+*.aux
+*.bbl
+*.blg
+*.pdf
+
 build/

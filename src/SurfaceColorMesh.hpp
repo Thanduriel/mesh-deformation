@@ -14,6 +14,7 @@
 #include <pmp/visualization/Shader.h>
 #include <pmp/MatVec.h>
 #include <pmp/SurfaceMesh.h>
+#include <memory>
 
 using namespace pmp;
 //=============================================================================
@@ -92,7 +93,8 @@ private:
 	bool have_texcoords_;
 
 	//! shaders
-	Shader color_shader_;
+	static Shader* color_shader_;
+	static int shader_ref_count_;
 
 	//! material properties
 	vec3 front_color_, back_color_;

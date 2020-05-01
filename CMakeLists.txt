@@ -19,11 +19,11 @@ set(PMP_BUILD_APPS OFF CACHE BOOL "")
 set(PMP_BUILD_EXAMPLES OFF CACHE BOOL "")
 set(PMP_BUILD_DOCS OFF CACHE BOOL "")
 set(PMP_BUILD_TESTS OFF CACHE BOOL "")
-add_subdirectory ("dependencies/pmp-library")
-include_directories("dependencies/pmp-library/src")
+add_subdirectory (${DEPENDENCIES_DIR}/pmp-library)
+
 
 #pmp libraries
-include_directories(${DEPENDENCIES_DIR}/pmp-library/src)
+#include_directories(${DEPENDENCIES_DIR}/pmp-library/src)
 include_directories(${DEPENDENCIES_DIR}/pmp-library/external/imgui)
 include_directories(${DEPENDENCIES_DIR}/pmp-library/external/eigen)
 include_directories(${DEPENDENCIES_DIR}/pmp-library/external/glfw/include)

@@ -3,6 +3,9 @@
 #include <pmp/algorithms/SurfaceNormals.h>
 #include <pmp/visualization/PhongShader.h>
 
+Shader* SurfaceColorMesh::color_shader_ = nullptr;
+int SurfaceColorMesh::shader_ref_count_ = 0;
+
 SurfaceColorMesh::SurfaceColorMesh()
 {
 	// initialize GL buffers to zero
@@ -30,6 +33,8 @@ SurfaceColorMesh::SurfaceColorMesh()
 	shininess_ = 100.0;
 	alpha_ = 1.0;
 	srgb_ = false;
+
+	++shader_ref_count_;
 }
 
 SurfaceColorMesh::~SurfaceColorMesh()
@@ -42,6 +47,13 @@ SurfaceColorMesh::~SurfaceColorMesh()
 	glDeleteBuffers(1, &feature_buffer_);
 	glDeleteBuffers(1, &vertex_color_buffer_);
 	glDeleteVertexArrays(1, &vertex_array_object_);
+
+	--shader_ref_count_;
+	if (!shader_ref_count_ && color_shader_)
+	{
+		delete color_shader_;
+		color_shader_ = nullptr;
+	}
 }
 
 void SurfaceColorMesh::draw(const mat4& projection_matrix, const mat4& modelview_matrix, const std::string& draw_mode)
@@ -53,12 +65,11 @@ void SurfaceColorMesh::draw(const mat4& projection_matrix, const mat4& modelview
 	}
 
 	// load shader?
-	if (!color_shader_.is_valid())
+	if (!color_shader_)
 	{
-		if (!color_shader_.load("../colorShader_vs.glsl", "../colorShader_fs.glsl"))
+		color_shader_ = new Shader();
+		if (!color_shader_->load("../shaders/colorShader_vs.glsl", "../shaders/colorShader_fs.glsl"))
 			exit(1);
-/*		else if (!color_shader_.source(phong_vshader, phong_fshader))
-			exit(1)*/;
 	}
 
 	// empty mesh?
@@ -71,24 +82,24 @@ void SurfaceColorMesh::draw(const mat4& projection_matrix, const mat4& modelview
 	mat3 n_matrix = inverse(transpose(linear_part(mv_matrix)));
 
 	// setup shader
-	color_shader_.use();
-	color_shader_.set_uniform("modelview_projection_matrix", mvp_matrix);
-	color_shader_.set_uniform("modelview_matrix", mv_matrix);
-	color_shader_.set_uniform("normal_matrix", n_matrix);
-	color_shader_.set_uniform("point_size", 5.0f);
-	color_shader_.set_uniform("light1", vec3(1.0, 1.0, 1.0));
-	color_shader_.set_uniform("light2", vec3(-1.0, 1.0, 1.0));
-	color_shader_.set_uniform("front_color", front_color_);
-	color_shader_.set_uniform("back_color", back_color_);
-	color_shader_.set_uniform("ambient", ambient_);
-	color_shader_.set_uniform("diffuse", diffuse_);
-	color_shader_.set_uniform("specular", specular_);
-	color_shader_.set_uniform("shininess", shininess_);
-	color_shader_.set_uniform("alpha", alpha_);
-	color_shader_.set_uniform("use_lighting", true);
-	color_shader_.set_uniform("use_texture", false);
-	color_shader_.set_uniform("use_srgb", false);
-	color_shader_.set_uniform("show_texture_layout", false);
+	color_shader_->use();
+	color_shader_->set_uniform("modelview_projection_matrix", mvp_matrix);
+	color_shader_->set_uniform("modelview_matrix", mv_matrix);
+	color_shader_->set_uniform("normal_matrix", n_matrix);
+	color_shader_->set_uniform("point_size", 5.0f);
+	color_shader_->set_uniform("light1", vec3(1.0, 1.0, 1.0));
+	color_shader_->set_uniform("light2", vec3(-1.0, 1.0, 1.0));
+	color_shader_->set_uniform("front_color", front_color_);
+	color_shader_->set_uniform("back_color", back_color_);
+	color_shader_->set_uniform("ambient", ambient_);
+	color_shader_->set_uniform("diffuse", diffuse_);
+	color_shader_->set_uniform("specular", specular_);
+	color_shader_->set_uniform("shininess", shininess_);
+	color_shader_->set_uniform("alpha", alpha_);
+	color_shader_->set_uniform("use_lighting", true);
+	color_shader_->set_uniform("use_texture", false);
+	color_shader_->set_uniform("use_srgb", false);
+	color_shader_->set_uniform("show_texture_layout", false);
 
 	glBindVertexArray(vertex_array_object_);
 

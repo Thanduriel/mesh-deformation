@@ -28,15 +28,15 @@ ModifierHandle::ModifierHandle()
 	torusMesh_RotationZ_.update_opengl_buffers();
 	torusMesh_RotationZ_.update_color_buffer();
 
-	scaleMesh_ScaleX_.read("../models/scaleMesh.off");
+	scaleMesh_ScaleX_.read("../models/scaleModel.obj");
 	scaleMesh_ScaleX_.update_opengl_buffers();
 	scaleMesh_ScaleX_.update_color_buffer();
 
-	scaleMesh_ScaleY_.read("../models/scaleMesh.off");
-	scaleMesh_ScaleY_.update_opengl_buffers();
+	scaleMesh_ScaleY_.read("../models/scaleModel.obj");
+	scaleMesh_ScaleY_.update_opengl_buffers()		;
 	scaleMesh_ScaleY_.update_color_buffer();
 
-	scaleMesh_ScaleZ_.read("../models/scaleMesh.off");
+	scaleMesh_ScaleZ_.read("../models/scaleModel.obj");
 	scaleMesh_ScaleZ_.update_opengl_buffers();
 	scaleMesh_ScaleZ_.update_color_buffer();
 
@@ -404,13 +404,11 @@ bool ModifierHandle::is_hit(const Ray& ray)
 	}
 	if (rayResult)
 	{
-	//	std::cout << "True" << std::endl;
 		last_hit_point_ = ray.origin + ray.direction * rayResult.value();
 		return true;
 	}
 	else
 	{
-	//	std::cout << "False" << std::endl;
 		return false;
 	}
 }

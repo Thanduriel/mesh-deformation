@@ -121,6 +121,7 @@ namespace algorithm {
 	{
 		assert(is_set());
 
+		smoothnessHandle_ = smoothness;
 		for (Vertex v : handleVertices_) smoothness_[v] = smoothness;
 		compute_higher_order();
 		update_support_region();
@@ -130,6 +131,7 @@ namespace algorithm {
 	{
 		assert(is_set());
 
+		smoothnessBoundary_ = smoothness;
 		for (Vertex v : boundaryVertices_) smoothness_[v] = smoothness;
 		compute_higher_order();
 		update_support_region();
@@ -282,7 +284,7 @@ namespace algorithm {
 			}
 
 			const DenseMatrix B1 = -laplace2_ * x2;
-			X = boundarySolution_ + solver_.solve(B1);
+			X = boundarySolution_ + solver_->solve(B1, "support vertices");
 		}
 
 		// apply result
@@ -346,7 +348,7 @@ namespace algorithm {
 		const std::size_t numFree = supportVertices_.size();
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
-		// use row major order to allow for quicker decomposition in L1 and L2
+		// use row major order to allow for quicker decomposition into L1 and L2
 		const SparseMatrixR L = useAreaScaling_ ? areaScale_ * laplacian_ : laplacian_;
 		// the left most L does not need to be scaled since ML = 0 <=> L = 0
 		SparseMatrixR lOperator = laplacian_;
@@ -362,7 +364,11 @@ namespace algorithm {
 
 		decompose_operator(lOperator, laplace1_, laplace2_);
 		
-		solver_.compute(laplace1_);
+		// smoothness scale can make the operator non-symmetric for order 3
+		const bool symmetric = laplaceOrder_ < 3 
+			|| (smoothnessHandle_ == 2.0 && smoothnessBoundary_ == 2.0);
+		solver_ = symmetric ? std::unique_ptr<BasicSolver>(new Solver< Eigen::SimplicialLDLT<SparseMatrix> > (laplace1_))
+			: std::unique_ptr<BasicSolver>(new Solver< Eigen::SparseLU<SparseMatrix> >(laplace1_));;
 
 		// precomputed basis functions
 		useBasisFunctions_ = compute_affine_frame();
@@ -381,9 +387,7 @@ namespace algorithm {
 			}
 
 			const DenseMatrix B1 = -laplace2_ * x2;
-			handleBasis_ = solver_.solve(B1);
-			if (solver_.info() != Eigen::Success)
-				std::cerr << "Deformation: Could not solve linear system for handle vertices.\n";
+			handleBasis_ = solver_->solve(B1, "handle vertices");
 		}
 
 		// boundary vertices are fixed so this part of the rhs can be computed now
@@ -399,12 +403,10 @@ namespace algorithm {
 
 		const DenseMatrix B2 = -laplace2_ * x3;
 
-		boundarySolution_ = solver_.solve(B2);
-		if (solver_.info() != Eigen::Success)
-			std::cerr << "Deformation: Could not solve linear system for boundary vertices.\n";
+		boundarySolution_ = solver_->solve(B2, "boundary vertices");
 
 		auto end = std::chrono::high_resolution_clock::now();
-		std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
+	//	std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
 	}
 
 	void Deformation::decompose_operator(const SparseMatrixR& lOperator, SparseMatrix& l1, SparseMatrix& l2) const
@@ -601,7 +603,7 @@ namespace algorithm {
 		for (Vertex v : supportVertices_) 
 			points_[v] = initialPositions_[v];
 		auto end = std::chrono::high_resolution_clock::now();
-		std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
+	//	std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
 	}
 
 	void Deformation::implicit_smoothing(Scalar timeStep)

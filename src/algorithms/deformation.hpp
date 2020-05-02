@@ -102,6 +102,41 @@ namespace algorithm {
 		using Basis = std::tuple<pmp::Normal, pmp::Normal, pmp::Normal>;
 		Basis local_frame(pmp::Vertex v) const;
 
+		// Functor that wraps an Eigen solver to allow for different implementations
+		// in the background.
+		class BasicSolver
+		{
+		public:
+			virtual ~BasicSolver() {}
+
+			virtual DenseMatrix solve(const DenseMatrix& b, const char* what) = 0;
+		};
+		
+		template<typename SolverT>
+		class Solver : public BasicSolver
+		{
+		public:
+			Solver(const SparseMatrix& A) : solver_(A) {}
+
+			Solver(Solver&& oth)
+			{
+				std::swap(solver_, oth.solver_);
+			}
+
+			// Solve Ax = b. 
+			// @param what Additional context info that is displayed if the solver fails.
+			DenseMatrix solve(const DenseMatrix& b, const char* what) override
+			{
+				const DenseMatrix x = solver_.solve(b);
+				if (solver_.info() != Eigen::Success)
+					std::cerr << "Deformation: Could not solve linear system for " << what << ".\n";
+
+				return x;
+			}
+		private:
+			SolverT solver_;
+		};
+
 		// mesh and modifier regions
 		pmp::SurfaceMesh& mesh_;
 		std::vector<pmp::Vertex> supportVertices_;
@@ -128,9 +163,12 @@ namespace algorithm {
 		DiagonalMatrix areaScale_; //< inverse Voronoi area
 		DiagonalMatrix areaScale1Inv_; //< scale for only the free vertices
 		DiagonalMatrix smoothnessScale_;
-		Eigen::SparseLU<SparseMatrix> solver_; // SparseLU, SimplicialLLT, SimplicialLDLT
+		std::unique_ptr<BasicSolver> solver_;
 		int laplaceOrder_ = 2;
 		bool useAreaScaling_ = true;
+
+		pmp::Scalar smoothnessHandle_ = 2.0;
+		pmp::Scalar smoothnessBoundary_ = 2.0;
 
 		// precomputed basis functions
 		DenseMatrix localHandle_;

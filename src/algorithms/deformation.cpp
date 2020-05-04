@@ -300,7 +300,7 @@ namespace algorithm {
 
 	void Deformation::compute_laplace()
 	{
-		assert(supportVertices_.size() && handleVertices_.size() && boundaryVertices_.size());
+		assert(is_set());
 
 		const size_t numFree = supportVertices_.size();
 		areaScale1Inv_.resize(numFree);

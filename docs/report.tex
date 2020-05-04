@@ -7,13 +7,15 @@
 \usepackage{amssymb}	% Math symbols such as \mathbb
 \usepackage{siunitx}
 \usepackage{graphicx}
+\usepackage{siunitx} % deg
+\usepackage[margin=2cm]{geometry}
 
 \let\Bbbk\relax
 
 
 \begin{document}
 
-\title{Implementation of a Freeform Modeling Tool }
+\title{Implementation of a Freeform Modelling Tool }
 
 
 \author{Johannes Hauffe, Robert Jendersie}
@@ -21,13 +23,57 @@
 \maketitle
 
 \section{Introduction}
-\cite{botsch2004intuitive}
+* mostly implements \cite{botsch2004intuitive}
+* focus here on details which are different or not explained there
+* gives explanations of user controllable parameters
+* exposes many params to allow for experimentation
 
 \section{Smooth Deformation}
-test test test test test test test test test test test test test test test
+Same as in \cite{botsch2004intuitive}, we perform the smooth deformation by minimizing a certain energy functional of the surface with respect to some boundary conditions. For the practical implementation on a triangle mesh we use discretization of the Laplace-Beltrami operator from \cite{meyer2003discrete}. For the vertices $P = \begin{bmatrix}p_1,\dots, p_n\end{bmatrix}^T$ of the mesh, it can be written in matrix form
+\begin{equation}\label{laplace}
+\triangle = M^{-1} L,
+\end{equation}
+where $M$ is the diagonal matrix of vertex areas 
+\begin{equation*}
+m_{ii} = 2 A_{mixed}(p_i),
+\end{equation*} and $L$ is the sparse symmetric operator of edge weights $e_{ij}$
+\begin{equation*}
+l_{ij} = l{ji} = \begin{cases} e_{ij} & i \neq j, \text{edge i-j exists} \\ -\sum_{p_k \in N_1(p_i)} e_{ik} & i=j \\ 0 & \text{else}  \end{cases},
+\end{equation*}
+where $N_1(p)$ is the one-ring of $p$. To improve numerical robustness for poor triangulations, the edge weights are computed by clamping extreme $\cot$ angles to the range $[0+c,\ang{180}-c]$
+\begin{align*}
+e_{ij} &= \max(0, f(\cot \alpha_{ij}) + f(\cot \beta_{ij})) \\
+f(x) &= \max(\cot c, \min(x, \cot \ang{180}-c)).
+\end{align*}
+We use $c = \ang{3}$.\\
+With \eqref{laplace} we can introduce the higher order operators $\triangle^k$ where $k=1$ deforms the surface like a membrane by minimizing the area, $k=2$ characterizes thin plate surfaces which minimize
+surface bending and $k=3$ minimizes curvature variation. At the boundary, this behaviour can be smoothly interpolated point wise by introducing diagonal matrices $D_l$ 
+\begin{equation}\label{laplace2}
+\hat{\triangle}^2 = M^{-1} L D_1 M^{-1} L
+\end{equation} ,
+\begin{equation}\label{laplace3}
+\hat{\triangle}^3 = M^{-1}LD_2 M^{-1} L D_1 M^{-1} L,
+\end{equation}
+with $d_{k_{ii}} = \lambda_k(p_i)$ from \cite{botsch2004intuitive}.
+This value can be adjusted by the user as \textit{smoothness} for boundary and handle points.
+Finally, we can look at solving $\hat{\triangle^k} = 0$. Taking only the rows $\hat{\triangle}^k_{sup} = \begin{bmatrix}L_1 L_2\end{bmatrix}$ acting on the support vertices $s$ and the fixed boundary vertices $b$ we get
+\begin{equation*}
+\begin{bmatrix}L_1 & L_2 \\ 0 & I\end{bmatrix} \begin{bmatrix}s \\ b\end{bmatrix} = \begin{bmatrix} 0 \\ b \end{bmatrix},
+\end{equation*}
+which leads to the sparse system with non-trivial solution
+\begin{equation}\label{lsg}
+L_1 s = -L_2 b.
+\end{equation}
+In all cases $L_1$ is positive definite and in the context of solving the system \eqref{lsg}, both \eqref{laplace} and \eqref{laplace2} can be easily made symmetric, since multiplication by $M$ from the left effectively removes the leftmost $M^{-1}$. For \eqref{laplace3} this only works if $D_1 = D_2$, that is, when no interpolation is done. Thus, if applicable, we employ a sparse $LDL^T$ decomposition and fall back to a sparse $LU$ decomposition for the latter case. \\
+Although the decomposition needs to be done just once and solving the system afterwards is relatively fast, introducing precomputed basis functions as described in \cite{botsch2004intuitive} further improves performance.
 \section{Detail Preservation}
+* to maintain the full details order should be the same as above
+* 
 %\cite{}
 
+\section{Results}
+* some time measures for different parameters
+* its real time
 
 \bibliographystyle{ieeetr}
 \bibliography{references}

@@ -67,9 +67,23 @@ L_1 s = -L_2 b.
 In all cases $L_1$ is positive definite and in the context of solving the system \eqref{lsg}, both \eqref{laplace} and \eqref{laplace2} can be easily made symmetric, since multiplication by $M$ from the left effectively removes the leftmost $M^{-1}$. For \eqref{laplace3} this only works if $D_1 = D_2$, that is, when no interpolation is done. Thus, if applicable, we employ a sparse $LDL^T$ decomposition and fall back to a sparse $LU$ decomposition for the latter case. \\
 Although the decomposition needs to be done just once and solving the system afterwards is relatively fast, introducing precomputed basis functions as described in \cite{botsch2004intuitive} further improves performance.
 \section{Detail Preservation}
-* to maintain the full details order should be the same as above
-* 
-%\cite{}
+We implement a multi-resolution editing approach as described in \cite{bibid}.
+To preserve high frequency components in the modified area, we perform implicit smoothing of the form
+%todo ref
+\begin{equation}
+(I - dt \triangle^k) s = s_0,
+\end{equation}
+to the support region with initial points $s_0$. A reasonable time-step $dt$ varies per mesh and can be adjusted by the user as \textit{strength}.
+To maintain the full details, the smoothing order $k$ should be the same as for the deformation, but in some cases a different order is more robust.
+%todo what about interpolation
+Similar to \eqref{lsg}, we can integrate the fixed boundary and make the system symmetric to then solve
+\begin{equation}
+(M_1 - dt L_1) s = M_1 s_0 + dt L_2 b,
+\end{equation}
+with the sparse $LDL^T$ decompositon, where $M_1$ are the area weights of vertices associated with $s$.
+Since the Laplace-Beltrami operator \eqref{laplace} is used, the points should move in normal direction.
+Thus, the resulting displacement is encoded per vertex in a local frame, defined by its normal and one edge. Optionally, other vertices in the n-ring can be considered to find the local frame where the displacement vector has the smallest length. Also proposed in \cite{}, this leads to ... in the reconstruction at a moderate cost.
+% todo example image
 
 \section{Results}
 * some time measures for different parameters

@@ -179,7 +179,7 @@ namespace algorithm {
 
 		// precomputed basis functions
 		DenseMatrix localHandle_;
-		bool useBasisFunctions_ = false;
+		bool useBasisFunctions_ = true;
 		DenseMatrix boundarySolution_;
 		DenseMatrix handleBasis_;
 		std::array<pmp::Point,4> affineFrame_;
@@ -190,7 +190,7 @@ namespace algorithm {
 		pmp::Point centerScale_;
 
 		// smoothing related
-		bool useImplicitSmoothing_ = true;
+		bool useImplicitSmoothing_ = false;
 		bool showDetails_ = true;
 		int searchNearestRing_ = 1;
 		int smoothingOrder_ = 2;

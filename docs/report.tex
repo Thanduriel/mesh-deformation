@@ -23,11 +23,9 @@
 \maketitle
 
 \section{Introduction}
-* mostly implements \cite{botsch2004intuitive}
-* focus here on details which are different or not explained there
-* gives explanations of user controllable parameters
-* exposes many params to allow for experimentation
-
+This report aims to explain the more involved implementation details of our multi-resolution freeform modelling tool.
+Both in terms of control metaphor and mathematical foundation, we follow the approach described in  \cite{botsch2004intuitive}. Thus, we focus on aspects which are either different in our implementation, or only mentioned briefly in the original paper.\\
+In addition, mathematical context is given for the occurring parameters, many of which are exposed to the user to allow for experimentation and adjustments for varying environments.
 \section{Smooth Deformation}
 Same as in \cite{botsch2004intuitive}, we perform the smooth deformation by minimizing a certain energy functional of the surface with respect to some boundary conditions. For the practical implementation on a triangle mesh we use discretization of the Laplace-Beltrami operator from \cite{meyer2003discrete}. For the vertices $P = \begin{bmatrix}p_1,\dots, p_n\end{bmatrix}^T$ of the mesh, it can be written in matrix form
 \begin{equation}\label{laplace}
@@ -46,7 +44,7 @@ e_{ij} &= \max(0, f(\cot \alpha_{ij}) + f(\cot \beta_{ij})) \\
 f(x) &= \max(\cot c, \min(x, \cot \ang{180}-c)).
 \end{align*}
 We use $c = \ang{3}$.\\
-With \eqref{laplace} we can introduce the higher order operators $\triangle^k$ where $k=1$ deforms the surface like a membrane by minimizing the area, $k=2$ characterizes thin plate surfaces which minimize
+With \eqref{laplace} we can introduce the higher \textit{order} operators $\triangle^k$ where $k=1$ deforms the surface like a membrane by minimizing the area, $k=2$ characterizes thin plate surfaces which minimize
 surface bending and $k=3$ minimizes curvature variation. At the boundary, this behaviour can be smoothly interpolated point wise by introducing diagonal matrices $D_l$ 
 \begin{equation}\label{laplace2}
 \hat{\triangle}^2 = M^{-1} L D_1 M^{-1} L
@@ -67,27 +65,28 @@ L_1 s = -L_2 b.
 In all cases $L_1$ is positive definite and in the context of solving the system \eqref{lsg}, both \eqref{laplace} and \eqref{laplace2} can be easily made symmetric, since multiplication by $M$ from the left effectively removes the leftmost $M^{-1}$. For \eqref{laplace3} this only works if $D_1 = D_2$, that is, when no interpolation is done. Thus, if applicable, we employ a sparse $LDL^T$ decomposition and fall back to a sparse $LU$ decomposition for the latter case. \\
 Although the decomposition needs to be done just once and solving the system afterwards is relatively fast, introducing precomputed basis functions as described in \cite{botsch2004intuitive} further improves performance.
 \section{Detail Preservation}
-We implement a multi-resolution editing approach as described in \cite{bibid}.
+We implement a multi-resolution editing approach based on point wise displacement vectors, as described in \cite{bibid}.
 To preserve high frequency components in the modified area, we perform implicit smoothing of the form
 %todo ref
 \begin{equation}
 (I - dt \triangle^k) s = s_0,
 \end{equation}
 to the support region with initial points $s_0$. A reasonable time-step $dt$ varies per mesh and can be adjusted by the user as \textit{strength}.
-To maintain the full details, the smoothing order $k$ should be the same as for the deformation, but in some cases a different order is more robust.
+To maintain the full details, the \textit{smoothing order} $k$ should be the same as for the deformation, but in some cases a different order is more robust.
 %todo what about interpolation
 Similar to \eqref{lsg}, we can integrate the fixed boundary and make the system symmetric to then solve
 \begin{equation}
 (M_1 - dt L_1) s = M_1 s_0 + dt L_2 b,
 \end{equation}
-with the sparse $LDL^T$ decompositon, where $M_1$ are the area weights of vertices associated with $s$.
-Since the Laplace-Beltrami operator \eqref{laplace} is used, the points should move in normal direction.
+with the sparse $LDL^T$ decomposition, where $M_1$ are the area weights of vertices associated with $s$.
+Since the Laplace-Beltrami operator \eqref{laplace} is used, the points should only move in normal direction.
 Thus, the resulting displacement is encoded per vertex in a local frame, defined by its normal and one edge. Optionally, other vertices in the n-ring can be considered to find the local frame where the displacement vector has the smallest length. Also proposed in \cite{}, this leads to ... in the reconstruction at a moderate cost.
 % todo example image
 
 \section{Results}
 * some time measures for different parameters
 * its real time
+* extra smoothing step not that useful, since full reconstruction requires same displacement as the deformation anyway
 
 \bibliographystyle{ieeetr}
 \bibliography{references}

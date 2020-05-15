@@ -3,6 +3,7 @@
 #include <pmp/algorithms/SurfaceNormals.h>
 #include <array>
 #include <chrono>
+#include <imgui_internal.h>
 
 using namespace pmp;
 
@@ -439,11 +440,23 @@ void VertexSelectionViewer::process_imgui()
 			deformationSpace_->show_details(showDetails_);
 			meshIsDirty_ |= MeshUpdate::Geometry;
 		}
+		ImGui::SameLine();
+		if (ImGui::Checkbox("implict smoothing", &useImplictSmoothing_))
+		{
+			deformationSpace_->use_implict_smoothing(useImplictSmoothing_);
+			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
 		if (ImGui::InputInt("search ring", &detailFrameSearchRadius_))
 		{
 			detailFrameSearchRadius_ = std::max(0, detailFrameSearchRadius_);
 			deformationSpace_->set_frame_search_depth(detailFrameSearchRadius_);
 			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+
+		if (!useImplictSmoothing_)
+		{
+			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.6f);
+			ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 		}
 		if (ImGui::SliderFloat("strength", &detailStrength_, 0.0000001f, 100.f, "%.3g", 10.f))
 		{
@@ -454,6 +467,11 @@ void VertexSelectionViewer::process_imgui()
 		{
 			deformationSpace_->set_smoothing_order(smoothingOrder_);
 			meshIsDirty_ |= MeshUpdate::Geometry;
+		}
+		if (!useImplictSmoothing_)
+		{
+			ImGui::PopStyleVar();
+			ImGui::PopItemFlag();
 		}
 
 		ImGui::Separator();
@@ -687,6 +705,7 @@ bool VertexSelectionViewer::init_modifier()
 	deformationSpace_->set_regions(supportVertices, handleVertices);
 	detailStrength_ = deformationSpace_->get_smoothing_strength();
 	showDetails_ = deformationSpace_->is_showing_details();
+	useImplictSmoothing_ = deformationSpace_->is_using_implict_smoothing();
 	detailFrameSearchRadius_ = deformationSpace_->get_frame_search_depth();
 	operatorOrder_ = deformationSpace_->get_order();
 	smoothingOrder_ = deformationSpace_->get_smoothing_order();

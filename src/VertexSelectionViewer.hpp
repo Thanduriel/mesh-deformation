@@ -96,6 +96,7 @@ private:
 	VertexDrawingMode vertexDrawingMode_ = VertexDrawingMode::None;
 	float brushSize_;
 	float detailStrength_ = 0.001;
+	bool useImplictSmoothing_ = false;
 	bool showDetails_ = true;
 	int detailFrameSearchRadius_;
 	int operatorOrder_ = 3;

@@ -65,10 +65,11 @@ namespace algorithm {
 
 		smoothnessScale_.setIdentity();
 
+		useBasisFunctions_ = compute_affine_frame();
 		compute_laplace();
 		compute_higher_order();
 
-		implicit_smoothing(smoothingTimeStep_);
+		compute_details();
 
 		// update vertices now to not have them jump with the first modification
 		update_support_region();
@@ -87,7 +88,11 @@ namespace algorithm {
 		for (Vertex v : handleVertices_)
 			points_[v] = initialPositions_[v];
 
-		compute_affine_frame();
+		// reset modifications to affine frame
+		affineFrame_[0] = pmp::Point(0.0, 0.0, 0.0);
+		affineFrame_[1] = pmp::Point(1.0, 0.0, 0.0);
+		affineFrame_[2] = pmp::Point(0.0, 1.0, 0.0);
+		affineFrame_[3] = pmp::Point(0.0, 0.0, 1.0);
 		reset_scale_origin();
 		update_support_region();
 		update_details();
@@ -99,22 +104,14 @@ namespace algorithm {
 		assert(k > 0 && k <= 3);
 		laplaceOrder_ = k;
 
-		if (is_set())
-		{
-			compute_higher_order();
-			update_support_region();
-		}
+		update_operator();
 	}
 
 	void Deformation::set_area_scaling(bool active)
 	{
 		useAreaScaling_ = active;
 
-		if (is_set())
-		{
-			compute_higher_order();
-			update_support_region();
-		}
+		update_operator();
 	}
 
 	void Deformation::set_smoothness_handle(pmp::Scalar smoothness)
@@ -123,8 +120,8 @@ namespace algorithm {
 
 		smoothnessHandle_ = smoothness;
 		for (Vertex v : handleVertices_) smoothness_[v] = smoothness;
-		compute_higher_order();
-		update_support_region();
+		
+		update_operator();
 	}
 
 	void Deformation::set_smoothness_boundary(pmp::Scalar smoothness)
@@ -133,8 +130,8 @@ namespace algorithm {
 
 		smoothnessBoundary_ = smoothness;
 		for (Vertex v : boundaryVertices_) smoothness_[v] = smoothness;
-		compute_higher_order();
-		update_support_region();
+		
+		update_operator();
 	}
 
 	void Deformation::translate(const pmp::Normal& translation)
@@ -202,41 +199,11 @@ namespace algorithm {
 			originScaleFrame_.push_back(p);
 	}
 
-	void Deformation::set_smoothing_strength(pmp::Scalar timeStep)
+	void Deformation::use_implict_smoothing(bool use)
 	{
-		smoothingTimeStep_ = timeStep;
+		useImplicitSmoothing_ = use;
 
-		// apply new results
-		if (is_set())
-		{
-			// remember current configuration to restore quickly
-			auto tempPoints = mesh_.vertex_property<Point>("v:tmpPoint");
-			for (Vertex v : handleVertices_)
-			{
-				tempPoints[v] = points_[v];
-				points_[v] = initialPositions_[v];
-			}
-			for (Vertex v : supportVertices_)
-			{
-				tempPoints[v] = lowResPositions_[v];
-				points_[v] = initialPositions_[v];
-			}
-
-			implicit_smoothing(smoothingTimeStep_);
-			
-			for (Vertex v : handleVertices_)
-				points_[v] = tempPoints[v];
-			for (Vertex v : supportVertices_)
-				lowResPositions_[v] = tempPoints[v];
-
-			update_details();
-		}
-	}
-
-	void Deformation::set_smoothing_order(int _order)
-	{
-		smoothingOrder_ = _order;
-		set_smoothing_strength(smoothingTimeStep_);
+		compute_details();
 	}
 
 	void Deformation::show_details(bool show)
@@ -250,10 +217,26 @@ namespace algorithm {
 	{
 		searchNearestRing_ = useNearest;
 
-		set_smoothing_strength(smoothingTimeStep_);
+		if(is_set()) compute_details();
 	}
 
-	void Deformation::update_support_region()
+	void Deformation::set_smoothing_strength(pmp::Scalar timeStep)
+	{
+		smoothingTimeStep_ = timeStep;
+
+		// apply new results
+		if (is_set()) compute_details();
+	}
+
+	void Deformation::set_smoothing_order(int _order)
+	{
+		smoothingOrder_ = _order;
+
+		if (is_set()) compute_details();
+	}
+
+	// ***************************************************************** //
+	void Deformation::update_support_region(bool apply)
 	{
 		DenseMatrix X;
 		if (useBasisFunctions_)
@@ -295,7 +278,7 @@ namespace algorithm {
 			lowResPositions_[supportVertices_[i]][2] = X(i, 2);
 		}
 
-		update_details();
+		if(apply) update_details();
 	}
 
 	void Deformation::compute_laplace()
@@ -371,11 +354,8 @@ namespace algorithm {
 			: std::unique_ptr<BasicSolver>(new Solver< Eigen::SparseLU<SparseMatrix> >(laplace1_));;
 
 		// precomputed basis functions
-		useBasisFunctions_ = compute_affine_frame();
 		if (useBasisFunctions_)
 		{
-			useBasisFunctions_ = true;
-
 			DenseMatrix x2 = DenseMatrix::Zero(numFixed, 4);
 			for (Vertex v : handleVertices_)
 			{
@@ -407,6 +387,16 @@ namespace algorithm {
 
 		auto end = std::chrono::high_resolution_clock::now();
 	//	std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
+	}
+
+	void Deformation::update_operator()
+	{
+		if (!is_set()) return;
+		
+		compute_higher_order();
+		update_support_region();
+
+		if (!useImplicitSmoothing_) compute_details();
 	}
 
 	void Deformation::decompose_operator(const SparseMatrixR& lOperator, SparseMatrix& l1, SparseMatrix& l2) const
@@ -606,6 +596,47 @@ namespace algorithm {
 	//	std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
 	}
 
+	void Deformation::compute_details()
+	{
+		// remember current configuration to restore quickly
+		auto tempPoints = mesh_.add_vertex_property<Point>("v:tmpPoint");
+		for (Vertex v : handleVertices_)
+		{
+			tempPoints[v] = points_[v];
+			points_[v] = initialPositions_[v];
+		}
+		for (Vertex v : supportVertices_)
+		{
+			tempPoints[v] = lowResPositions_[v];
+			points_[v] = initialPositions_[v];
+		}
+
+		if (useImplicitSmoothing_)
+			implicit_smoothing(smoothingTimeStep_);
+		else
+		{
+			auto affineFrame = affineFrame_;
+			affineFrame_[0] = pmp::Point(0.0, 0.0, 0.0);
+			affineFrame_[1] = pmp::Point(1.0, 0.0, 0.0);
+			affineFrame_[2] = pmp::Point(0.0, 1.0, 0.0);
+			affineFrame_[3] = pmp::Point(0.0, 0.0, 1.0);
+			update_support_region(false);
+			affineFrame_ = affineFrame;
+		}
+		store_details();
+
+		// restore positions
+		for (Vertex v : handleVertices_)
+			points_[v] = tempPoints[v];
+		for (Vertex v : supportVertices_)
+			lowResPositions_[v] = tempPoints[v];
+
+		// apply changes
+		update_details();
+
+		mesh_.remove_vertex_property(tempPoints);
+	}
+
 	void Deformation::implicit_smoothing(Scalar timeStep)
 	{
 		const std::size_t numFree = supportVertices_.size();
@@ -654,11 +685,8 @@ namespace algorithm {
 		}
 		decompose_operator(lOperator, L1, L2);
 
-		SparseMatrix I(laplace1_.rows(), laplace1_.cols());
-		I.setIdentity();
-
 		// L1 is symmetric
-		Eigen::SimplicialLDLT<SparseMatrix> solver(areaScale1Inv_ * I - (timeStep * L1));
+		Eigen::SimplicialLDLT<SparseMatrix> solver(SparseMatrix(areaScale1Inv_) - (timeStep * L1));
 		DenseMatrix X = solver.solve(areaScale1Inv_ * x1 + timeStep * L2 * x2);
 
 		for (size_t i = 0; i < supportVertices_.size(); ++i)
@@ -668,8 +696,6 @@ namespace algorithm {
 			lowResPositions_[v][1] = X(i, 1);
 			lowResPositions_[v][2] = X(i, 2);
 		}
-
-		store_details();
 	}
 
 	std::tuple<Normal, Normal, Normal> Deformation::local_frame(Vertex v) const

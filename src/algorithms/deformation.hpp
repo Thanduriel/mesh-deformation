@@ -57,17 +57,22 @@ namespace algorithm {
 		void reset_scale_origin();
 
 		// Smoothing for detail preservation.
-		void set_smoothing_strength(pmp::Scalar timeStep);
-		pmp::Scalar get_smoothing_strength() const { return smoothingTimeStep_; }
-		// Same as set_order() but used in the implicit smoothing.
-		void set_smoothing_order(int _order);
-		int get_smoothing_order() const { return smoothingOrder_; }
+		// Use implicit smoothing instead of the displacement from the regular operator.
+		void use_implict_smoothing(bool use);
+		bool is_using_implict_smoothing() const { return useImplicitSmoothing_; }
 		// Should details be added to the vertices in the support region.
 		void show_details(bool show);
 		bool is_showing_details() const { return showDetails_; }
 		// Store details in the local frame or search in the neighborhood for the shortest displacement.
 		void set_frame_search_depth(int nRing);
 		int get_frame_search_depth() const { return searchNearestRing_; }
+
+		// Parameters for implict smoothing.
+		void set_smoothing_strength(pmp::Scalar timeStep);
+		pmp::Scalar get_smoothing_strength() const { return smoothingTimeStep_; }
+		// Same as set_order() but used in the implicit smoothing.
+		void set_smoothing_order(int _order);
+		int get_smoothing_order() const { return smoothingOrder_; }
 	private:
 		// matrix types in use
 		using MatScalar = double; // scalar type for equation system solving
@@ -78,10 +83,14 @@ namespace algorithm {
 		using Triplet = Eigen::Triplet<MatScalar>;
 
 
-		// Updates the positions of the support vertices with the current operator.
-		void update_support_region();
+		// Updates the lowResPositions of the support vertices with the current operator.
+		// @param Apply changes to the actual points. Also adds details if showDetails_ == true.
+		void update_support_region(bool apply = true);
 		void compute_laplace();
 		void compute_higher_order();
+		// Recompute the operator with the current params and apply resulting changes to the mesh.
+		void update_operator();
+
 		// Decomposes the matrix into parts associated with the free and fixed vertices.
 		// @param l1 Output target for the free vertices.
 		// @param l2 Output target for the fixed vertices.
@@ -93,9 +102,11 @@ namespace algorithm {
 		// Recomputes the current mesh based on the low resolution version and detail offsets.
 		void update_details();
 		// Takes the current representation in lowResPositions_ and stores differences to the
-		// real points in detailVectors_.
+		// initial points in detailVectors_.
 		void store_details();
-		// Applies implicit smoothing to the support region and stores the results in lowResPositions_.
+		// Performs smoothing to the initial support region and updates encoded details.
+		void compute_details();
+		// Applies implicit smoothing to the support region storing the results in lowResPositions_.
 		void implicit_smoothing(pmp::Scalar timeStep);
 		// Computes a local frame based on the vertex normal and one edge.
 		// @return The normalized orthogonal basis vectors.
@@ -109,6 +120,8 @@ namespace algorithm {
 		public:
 			virtual ~BasicSolver() {}
 
+			// Solve Ax = b. 
+			// @param what Additional context info that is displayed if the solver fails.
 			virtual DenseMatrix solve(const DenseMatrix& b, const char* what) = 0;
 		};
 		
@@ -116,15 +129,9 @@ namespace algorithm {
 		class Solver : public BasicSolver
 		{
 		public:
+			// Constructs the lhs.
 			Solver(const SparseMatrix& A) : solver_(A) {}
 
-			Solver(Solver&& oth)
-			{
-				std::swap(solver_, oth.solver_);
-			}
-
-			// Solve Ax = b. 
-			// @param what Additional context info that is displayed if the solver fails.
 			DenseMatrix solve(const DenseMatrix& b, const char* what) override
 			{
 				const DenseMatrix x = solver_.solve(b);
@@ -183,6 +190,7 @@ namespace algorithm {
 		pmp::Point centerScale_;
 
 		// smoothing related
+		bool useImplicitSmoothing_ = true;
 		bool showDetails_ = true;
 		int searchNearestRing_ = 1;
 		int smoothingOrder_ = 2;

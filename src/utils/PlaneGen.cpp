@@ -1,4 +1,4 @@
-#include "planegen.hpp"
+#include "PlaneGen.hpp"
 #include <random>
 
 namespace util {

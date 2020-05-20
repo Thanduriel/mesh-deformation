@@ -1,13 +1,13 @@
 #pragma once
 
-#include "blockalloc.hpp"
+#include "BlockAlloc.hpp"
 #include <pmp/MatVec.h>
 #include <memory>
 
 namespace util {
 
 	/* A sparse octree for 3D points.
-	 * @param T The type of objects to store in addition the the points as keys.
+	 * @param T The type of objects to store in addition to the points as keys.
 	 * @param BucketSize The maximum number of elements in each node.
 	 * @param FloatT Float type for the points.
 	 */

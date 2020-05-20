@@ -1,13 +1,8 @@
 //=============================================================================
+// Based on SurfaceMeshGL.
 // Copyright (C) 2011-2019 The pmp-library developers
-//
-// This file is part of the Polygon Mesh Processing Library.
-// Distributed under a MIT-style license, see LICENSE.txt for details.
-//
-// SPDX-License-Identifier: MIT-with-employer-disclaimer
 //=============================================================================
 #pragma once
-//=============================================================================
 
 #define GLEW_STATIC
 #include <pmp/visualization/GL.h>
@@ -16,14 +11,7 @@
 #include <pmp/SurfaceMesh.h>
 #include <memory>
 
-using namespace pmp;
-//=============================================================================
-
-//! \addtogroup visualization visualization
-//! @{
-
-//=============================================================================
-class SurfaceColorMesh : public SurfaceMesh
+class SurfaceColorMesh : public pmp::SurfaceMesh
 {
 public:
 	SurfaceColorMesh();
@@ -31,14 +19,14 @@ public:
 	~SurfaceColorMesh();
 
 	//! get front color
-	const vec3& front_color() const { return front_color_; }
+	const pmp::vec3& front_color() const { return front_color_; }
 	//! set front color
-	void set_front_color(const vec3& color) { front_color_ = color; }
+	void set_front_color(const pmp::vec3& color) { front_color_ = color; }
 
 	//! get back color
-	const vec3& back_color() const { return back_color_; }
+	const pmp::vec3& back_color() const { return back_color_; }
 	//! set back color
-	void set_back_color(const vec3& color) { back_color_ = color; }
+	void set_back_color(const pmp::vec3& color) { back_color_ = color; }
 
 	//! get ambient reflection coefficient
 	float ambient() const { return ambient_; }
@@ -66,7 +54,7 @@ public:
 	void set_alpha(float a) { alpha_ = a; }
 
 	//! draw the mesh
-	void draw(const mat4& projection_matrix, const mat4& modelview_matrix,
+	void draw(const pmp::mat4& projection_matrix, const pmp::mat4& modelview_matrix,
 		const std::string& draw_mode);
 
 	//! update all opengl buffers for efficient core profile rendering
@@ -93,11 +81,12 @@ private:
 	bool have_texcoords_;
 
 	//! shaders
-	static Shader* color_shader_;
+	// SurfaceColorMesh instances have shared ownership of the shader via reference counting.
+	static pmp::Shader* color_shader_;
 	static int shader_ref_count_;
 
 	//! material properties
-	vec3 front_color_, back_color_;
+	pmp::vec3 front_color_, back_color_;
 	float ambient_, diffuse_, specular_, shininess_, alpha_;
 	bool srgb_;
 	

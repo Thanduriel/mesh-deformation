@@ -1,9 +1,9 @@
 #include "VertexSelectionViewer.hpp"
-#include "algorithms/deformation.hpp"
+#include "algorithms/Deformation.hpp"
 #include <pmp/algorithms/SurfaceNormals.h>
+#include <imgui_internal.h>
 #include <array>
 #include <chrono>
-#include <imgui_internal.h>
 
 using namespace pmp;
 

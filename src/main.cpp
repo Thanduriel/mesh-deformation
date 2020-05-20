@@ -1,7 +1,5 @@
-#include "pmp/visualization/MeshViewer.h"
 #include "pmp/algorithms/SurfaceSmoothing.h"
 #include "VertexSelectionViewer.hpp"
-#include "utils/planegen.hpp"
 
 // CRT's memory leak detection
 #ifndef NDEBUG 

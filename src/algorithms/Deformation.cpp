@@ -1,4 +1,4 @@
-#include "deformation.hpp"
+#include "Deformation.hpp"
 #include <pmp/algorithms/DifferentialGeometry.h>
 #include <pmp/algorithms/SurfaceNormals.h>
 #include <chrono>

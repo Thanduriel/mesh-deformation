@@ -91,9 +91,59 @@ Thus, the resulting displacement is encoded per vertex in a local frame, defined
 \end{figure}
 
 \section{Results}
-* some time measures for different parameters
-* its real time
-* extra smoothing step not that useful, since full reconstruction requires same displacement as the deformation anyway
+
+For a deformation to be performed in real time, the algorithm must have a good performance.
+To verify the performance of the algorithm different scenarios were tested with regards to changing parameters and doing position changes (translation, rotation or scaling).
+All scenarios were tested on a mesh, where the handle region contains 496 and the support region 1569 vertices. The measured times are the average of 500 measured values. \\
+If we consider only the vertex position changes, then these can be done in real time. The only difference is if we encode with or without details.
+
+\begin{table}[h]
+	\centering
+	\caption{Performance of position changes of vertices.}
+	\begin{tabular}{|l|l|}
+		\hline
+		without details & 0.063 ms \\
+		with details & 1.153 ms \\
+		\hline
+	\end{tabular}
+\label{tab:handle}
+\end{table}
+
+Apart from the position changes, you can also make changes that change the deformation operator. These changes can only be used with a slight delay.
+
+\begin{table}[h]
+	\centering
+	\caption{As we see, the higher the order of the operator, the longer the algorithm takes to adapt the operator}
+	\begin{tabular}{|l|l|}
+		\hline
+		order 1 & 11.989 ms \\
+		order 2 & 87.990 ms \\
+		order 3 & 212.766 ms \\
+		\hline
+		details order 1 & 15.349 ms \\
+		details order 2 & 73.921 ms \\
+		details order 3 & 166.362 ms \\
+		\hline
+	\end{tabular}
+\label{tab:order}
+\end{table}
+
+It is possible to adjust the smoothness factor to change the behaviour at the border regions at the handle an support.
+The changes are also only achievable with a noticeable delay.
+
+\begin{table}[h]
+	\centering
+	\caption{As we see, the higher the order of the operator, the longer the algorithm takes to adapt the operator}
+	\begin{tabular}{|l|l|}
+		\hline
+		detail strength & 161.554 ms \\
+		\hline
+		smoothness handle & 240.960 ms \\
+		smoothness boundary & 246.254 ms \\		
+		\hline
+	\end{tabular}
+\label{tab:order}
+\end{table}
 
 \bibliographystyle{ieeetr}
 \bibliography{references}

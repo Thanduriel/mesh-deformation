@@ -6,6 +6,7 @@
 #include <Eigen/Sparse>
 #include <Eigen/SparseCholesky>
 #include <array>
+#include <memory>
 
 namespace algorithm {
 
@@ -160,8 +161,8 @@ namespace algorithm {
 		pmp::VertexProperty<pmp::Point> lowResPositions_; //< positions in the low resolution representation
 		pmp::VertexProperty<pmp::Point> initialPositions_; //< original positions at the time of set_regions()
 		pmp::VertexProperty<pmp::Point> points_; //< standard point property "v:point" for convenience
-		pmp::VertexProperty<pmp::Vertex> localFrameIdx_;
 		pmp::VertexProperty<Basis> localFrames_;
+		pmp::VertexProperty<pmp::Vertex> localFrameIdx_;
 
 		// Laplace operator
 		SparseMatrixR laplacian_; //< symmetric laplacian

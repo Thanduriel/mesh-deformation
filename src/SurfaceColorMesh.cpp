@@ -1,7 +1,8 @@
 #include "SurfaceColorMesh.hpp"
 
 #include <pmp/algorithms/SurfaceNormals.h>
-#include <pmp/visualization/PhongShader.h>
+
+using namespace pmp;
 
 Shader* SurfaceColorMesh::color_shader_ = nullptr;
 int SurfaceColorMesh::shader_ref_count_ = 0;

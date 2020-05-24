@@ -1,6 +1,6 @@
 #pragma once
 
-#include "algorithms/intersection.hpp"
+#include "algorithms/Intersection.hpp"
 #include "SurfaceColorMesh.hpp"
 #include <pmp/visualization/MeshViewer.h>
 #include <imgui.h>
@@ -26,36 +26,36 @@ public:
 	ModifierHandle();
 	~ModifierHandle();
 
-	void draw(const mat4& projection_matrix, const mat4& view_matrix);
+	void draw(const pmp::mat4& projection_matrix, const pmp::mat4& view_matrix);
 
-	void set_scale(const vec3 scale);
-	void set_origin(const vec3& origin, const vec3& normal);
+	void set_scale(const pmp::vec3 scale);
+	void set_origin(const pmp::vec3& origin, const pmp::vec3& normal);
 	void set_translationMode();
 	void set_rotationMode();
 	void set_scaleMode();
 
-	void set_mouseStartPos(vec2 pos);
+	void set_mouseStartPos(pmp::vec2 pos);
 
-	vec2 get_mouseStartPos();
+	pmp::vec2 get_mouseStartPos();
 
 	bool is_translationMode() const;
 	bool is_rotationMode() const;
 	bool is_scaleMode() const;
 
-	vec3 get_active_translation_axis() const;
-	std::vector<vec3> get_active_normal_axes();
+	pmp::vec3 get_active_translation_axis() const;
+	std::vector<pmp::vec3> get_active_normal_axes();
 
-	vec3 get_last_hit_point();
+	pmp::vec3 get_last_hit_point();
 
-	vec3 compute_move_vector(float scalar);
+	pmp::vec3 compute_move_vector(float scalar);
 
-	vec3 compute_move_vector();
-	vec3 compute_rotation_vector();
-	vec3 origin();
+	pmp::vec3 compute_move_vector();
+	pmp::vec3 compute_rotation_vector();
+	pmp::vec3 origin();
 
-	void init_local_coordinate_system(mat4 modelview, vec3 normal);
+	void init_local_coordinate_system(pmp::mat4 modelview, pmp::vec3 normal);
 
-	void set_origin(const vec3 & origin);
+	void set_origin(const pmp::vec3 & origin);
 
 	void set_scale(float scale);
 
@@ -65,9 +65,9 @@ private:
 	void precompute_intersection_structure(SurfaceColorMesh& mesh);
 	
 	void precompute_modelViewMatrix();
-	mat4 compute_modelViewMatrix(vec3 forward, mat4 scaleMatrix);
+	pmp::mat4 compute_modelViewMatrix(pmp::vec3 forward, pmp::mat4 scaleMatrix);
 
-	std::optional<float> is_hit(const Ray& ray, mat4 modelMatrixInverse,const SurfaceColorMesh& mesh) const;
+	std::optional<float> is_hit(const Ray& ray, pmp::mat4 modelMatrixInverse,const SurfaceColorMesh& mesh) const;
 
 	void set_selection(SurfaceColorMesh& mesh);
 
@@ -85,39 +85,39 @@ private:
 	SurfaceColorMesh scaleMesh_ScaleY_;
 	SurfaceColorMesh scaleMesh_ScaleZ_;
 
-	vec3 origin_;
-	mat4 modelMatrixX_;
-	mat4 modelMatrixInverseX_;
-	mat4 modelMatrixY_;
-	mat4 modelMatrixInverseY_;
-	mat4 modelMatrixZ_;
-	mat4 modelMatrixInverseZ_;
-	mat4 modelMatrixRotationX_;
-	mat4 modelMatrixInverseRotationX_;
-	mat4 modelMatrixRotationY_;
-	mat4 modelMatrixInverseRotationY_;
-	mat4 modelMatrixRotationZ_;
-	mat4 modelMatrixInverseRotationZ_;
-	mat4 modelMatrixScaleX_;
-	mat4 modelMatrixScaleInverseX_;
-	mat4 modelMatrixScaleY_;
-	mat4 modelMatrixScaleInverseY_;
-	mat4 modelMatrixScaleZ_;
-	mat4 modelMatrixScaleInverseZ_;
+	pmp::vec3 origin_;
+	pmp::mat4 modelMatrixX_;
+	pmp::mat4 modelMatrixInverseX_;
+	pmp::mat4 modelMatrixY_;
+	pmp::mat4 modelMatrixInverseY_;
+	pmp::mat4 modelMatrixZ_;
+	pmp::mat4 modelMatrixInverseZ_;
+	pmp::mat4 modelMatrixRotationX_;
+	pmp::mat4 modelMatrixInverseRotationX_;
+	pmp::mat4 modelMatrixRotationY_;
+	pmp::mat4 modelMatrixInverseRotationY_;
+	pmp::mat4 modelMatrixRotationZ_;
+	pmp::mat4 modelMatrixInverseRotationZ_;
+	pmp::mat4 modelMatrixScaleX_;
+	pmp::mat4 modelMatrixScaleInverseX_;
+	pmp::mat4 modelMatrixScaleY_;
+	pmp::mat4 modelMatrixScaleInverseY_;
+	pmp::mat4 modelMatrixScaleZ_;
+	pmp::mat4 modelMatrixScaleInverseZ_;
 
-	mat4 scaleMatrixArrow_;
-	mat4 scaleMatrixTorus_;
-	mat4 scaleMatrixScale_;
+	pmp::mat4 scaleMatrixArrow_;
+	pmp::mat4 scaleMatrixTorus_;
+	pmp::mat4 scaleMatrixScale_;
 
-	vec3 local_x_;
-	vec3 local_y_;
-	vec3 local_z_;
+	pmp::vec3 local_x_;
+	pmp::vec3 local_y_;
+	pmp::vec3 local_z_;
 
-	vec3 handleNormal;
+	pmp::vec3 handleNormal;
 
-	vec3 last_hit_point_;
+	pmp::vec3 last_hit_point_;
 
-	vec2 mouseStartPos_;
+	pmp::vec2 mouseStartPos_;
 	
 	std::unordered_set<SurfaceColorMesh*> selectionMeshes_;
 	std::unordered_set<SurfaceColorMesh*> updateMeshes_;

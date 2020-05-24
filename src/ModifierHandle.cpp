@@ -1,6 +1,7 @@
 #include "ModifierHandle.hpp"
-#include "algorithms/intersection.hpp"
 #include <iostream>
+
+using namespace pmp;
 
 ModifierHandle::ModifierHandle()
 {

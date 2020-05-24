@@ -1,7 +1,8 @@
 <img src="/mesh-deformation.png?raw=true">
 
 ## About
-A small modeller for triangle meshes supporting multi-resolution editing and intuitive freeform modifications based on [\[1\]](#references).
+A small modeller for triangle meshes supporting multi-resolution editing and intuitive freeform modifications based on [\[1\]](#references). Technical details regarding the implementation and user controllable parameters are explained in [docs/report](docs/report.pdf).
+
 Some example meshes can be found in `models/` and `dependencies/pmp-library/external/pmp-data`.
 Supported formats include `off`,`obj` and `stl`, for the full list see the  [pmp-library documentation](http://www.pmp-library.org/classpmp_1_1_surface_mesh.html#ab76e687f8e2ba74cb6d5918fc43caf36).
 

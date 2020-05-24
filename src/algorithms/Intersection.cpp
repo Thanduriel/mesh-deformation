@@ -1,4 +1,4 @@
-#include "intersection.hpp"
+#include "Intersection.hpp"
 #include <limits>
 
 namespace algorithm {

@@ -1,8 +1,8 @@
-#include "pmp/visualization/MeshViewer.h"
-#include "imgui.h"
-#include <SurfaceColorMesh.hpp>
+#include "SurfaceColorMesh.hpp"
 #include "ModifierHandle.hpp"
-#include "utils/octree.hpp"
+#include "utils/Octree.hpp"
+#include <pmp/visualization/TrackballViewer.h>
+#include <imgui.h>
 #include <memory>
 
 namespace algorithm {
@@ -50,7 +50,7 @@ public:
 	// Picks all vertices in a radius around the position on the mesh.
 	// @param onlyConnected Starts with the closest vertex and adds only 
 	//                      those vertices connected to it within the sphere.
-	std::vector<Vertex> pick_vertex(int x, int y, float radius, bool onlyConnected = false);
+	std::vector<pmp::Vertex> pick_vertex(int x, int y, float radius, bool onlyConnected = false);
 
 	void process_imgui() override;
 
@@ -76,20 +76,20 @@ private:
 
 	void compute_translation_normal();
 
-	float compute_viewerAngleWith(float xpos, float ypos, vec3 vec);
+	float compute_viewerAngleWith(float xpos, float ypos, pmp::vec3 vec);
 
-	vec2 compute_screenCoordinates(vec3 vec);
-	vec3 compute_WorldCoordinates(vec2 vec, float zf);
+	pmp::vec2 compute_screenCoordinates(pmp::vec3 vec);
+	pmp::vec3 compute_WorldCoordinates(pmp::vec2 vec, float zf);
 
 	struct SphereQuery
 	{
 		bool descend(const pmp::vec3& center, double size) const;
-		void process(const pmp::vec3& key, Vertex v);
+		void process(const pmp::vec3& key, pmp::Vertex v);
 
 		pmp::vec3 center_;
 		float radius_;
 		float radiusSq_;
-		std::vector<Vertex> verticesHit;
+		std::vector<pmp::Vertex> verticesHit;
 	};
 
 	// gui options

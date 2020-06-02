@@ -54,7 +54,7 @@ namespace algorithm {
 		void scale(pmp::Scalar scale);
 		void rotate(const pmp::Normal& axis, pmp::Scalar angle);
 
-		//TODO Comment
+		// recalculates the origin of the scale operator
 		void reset_scale_origin();
 
 		// Smoothing for detail preservation.

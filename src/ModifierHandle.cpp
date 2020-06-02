@@ -67,7 +67,6 @@ void ModifierHandle::draw(const mat4& projection_matrix, const mat4& view_matrix
 	{
 		scaleMesh_ScaleX_.draw(projection_matrix, view_matrix * modelMatrixScaleX_, "Smooth Shading");
 		scaleMesh_ScaleY_.draw(projection_matrix, view_matrix * modelMatrixScaleY_, "Smooth Shading");
-		//scaleMesh_ScaleZ_.draw(projection_matrix, view_matrix * modelMatrixScaleZ_, "Smooth Shading");
 	}
 }
 

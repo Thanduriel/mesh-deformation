@@ -91,53 +91,34 @@ Thus, the resulting displacement is encoded per vertex in a local frame, defined
 \end{figure}
 
 \section{Results}
-
-For a deformation to be performed in real time, the algorithm must have a good performance.
-To verify the performance of the algorithm different scenarios were tested with regards to changing parameters and doing position changes (translation, rotation or scaling).
-All scenarios were tested on a mesh with 125k vertices, where the handle region contains 15k and the support region 35k vertices. The measured times are the average of 500 measured values. \\
-If we consider only the vertex position changes, then these can be done in real time. The only difference is if we encode with or without details.
-
-\begin{table}[h]
-	\centering
-	\caption{Hardware of the test system}
-	\begin{tabular}{|l|l|}
-		\hline
-		System & Windows 10 Pro 64bit \\
-		CPU & i5-6600k, 4 Cores, 3.50 GHz \\
-		RAM & 16 GB DDR4 \\
-		\hline
-	\end{tabular}
-\label{tab:handle}
-\end{table}
-
-
-
-\begin{table}[h]
-	\centering
-	\caption{Performance of position changes of vertices.}
-	\begin{tabular}{|l|l|}
-		\hline
-		without details & 1.632 ms \\
-		with details & 23.232 ms \\
-		\hline
-	\end{tabular}
-\label{tab:handle}
-\end{table}
+To evaluate the usability of our tool, we measure the performance for both modifications to the mesh and parameter changes of the operator.
+Times are measured on a i5-6600k ($4 \times 3.50$GHz) with 16GB DDR4 running Win10 Pro 64bit.
+The test scenario consists of a mesh with 125k vertices, with a handle region containing 15k and the support region 35k vertices. \\
+%The measured times are the average of 500 measured values.
+First we consider modifications to the mesh. Updating the support vertices takes just $1.6\si{ms}$, adding the details another $21.6\si{ms}$, resulting in a smooth framerate when editing.
 
 Apart from the position changes, you can also make changes that change the deformation operator. These changes can only be used with a delay.
 
-\begin{table}[h]
+\begin{table}
 	\centering
-	\caption{The results of the measurements when we change the order of the operator}
-	\begin{tabular}{|l|l|}
+	\caption{Measurements for updates to the smoothing step and the operator.}
+	\begin{tabular}{lc}
+		parameter & time [ms] \\
 		\hline
-		order 1 & 276.769 ms \\
-		order 2 & 922.871 ms \\
-		order 3 & 2262.19 ms \\
+		detail strength & 161.55 \\
+		details order 1 & 212.81 \\
+		details order 2 & 830.77 \\
+		details order 3 & 2168.81 \\
+		search ring 1 & 89.59 \\
+		search ring 5 & 239.42 \\
+		search ring 10 & 725.02 \\
+		search ring 20 & 2417.37 \\
 		\hline
-		details order 1 & 212.810 ms \\
-		details order 2 & 830.765 ms \\
-		details order 3 & 2168.810 ms \\
+		order 1 & 276.77 \\
+		order 2 & 922.87 \\
+		order 3 & 2262.19 \\
+		smoothness handle & 271.18 \\
+		smoothness boundary & 268.97 \\	
 		\hline
 	\end{tabular}
 \label{tab:order}
@@ -145,25 +126,6 @@ Apart from the position changes, you can also make changes that change the defor
 
 It is possible to adjust the smoothness factor to change the behaviour at the border regions at the handle an support.
 The changes are also only achievable with a noticeable delay.
-
-\begin{table}[h]
-	\centering
-	\caption{Results when we change the configuration of the behaviour at the border regions}
-	\begin{tabular}{|l|l|}
-		\hline
-		detail strength & 161.554 ms \\
-		\hline
-		search ring 1 & 89.594 ms \\
-		search ring 5 & 239.423 ms \\
-		search ring 10 & 725.021 ms \\
-		search ring 20 & 2417.368 ms \\
-		\hline
-		smoothness handle & 271.178 ms \\
-		smoothness boundary & 268.972 ms \\		
-		\hline
-	\end{tabular}
-\label{tab:order}
-\end{table}
 
 \bibliographystyle{ieeetr}
 \bibliography{references}

@@ -445,22 +445,27 @@ void ModifierHandle::precompute_modelViewMatrix()
 
 mat4 ModifierHandle::compute_modelViewMatrix(vec3 forward, mat4 scaleMatrix)
 {
+	// compute rotation to point in forward direction
 	const vec3 forwardN = normalize(forward);
 	const vec3 defForward(0.f, 0.f, 1.f);
-	const float angle = acos(dot(forwardN, defForward)) * 180.f / M_PI;
-	return translation_matrix(origin_) * transpose(rotation_matrix(cross(forwardN, defForward), angle)) * scaleMatrix;
+	const float angle = acos(dot(forwardN, defForward)) * 180.f / static_cast<float>(M_PI);
+
+	return translation_matrix(origin_) 
+		* transpose(rotation_matrix(cross(forwardN, defForward), angle)) 
+		* scaleMatrix;
 }
 
 std::optional<float> ModifierHandle::is_hit(const Ray& ray, mat4 modelMatrixInverse, const SurfaceColorMesh& mesh) const
 {
+	// transform ray into the local coordinate system to use precomputed intersection structure
 	Ray localRay;
 	const vec4 origin = modelMatrixInverse * pmp::vec4(ray.origin, 1.f);
 	const vec4 direction = modelMatrixInverse * pmp::vec4(ray.direction, 0.f);
 	localRay.origin = vec3(origin[0], origin[1], origin[2]);
 	localRay.direction = vec3(direction[0], direction[1], direction[2]);
 
+	// just check all triangles of this mesh
 	auto triangles = mesh.get_face_property<algorithm::IntersectionTriangle>("f:intersect");
-
 	for (Face f : mesh.faces())
 	{
 		auto scalar = algorithm::intersect(localRay, triangles[f]);

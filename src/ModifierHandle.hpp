@@ -2,7 +2,6 @@
 
 #include "algorithms/Intersection.hpp"
 #include "SurfaceColorMesh.hpp"
-#include <pmp/visualization/MeshViewer.h>
 #include <imgui.h>
 #include <memory>
 #include <unordered_set>

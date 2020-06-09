@@ -286,7 +286,7 @@ bool ModifierHandle::is_hit(const Ray& ray)
 
 	if (is_translationMode())
 	{
-		if (rayResultHelp = is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_))
+		if ((rayResultHelp = is_hit(ray, modelMatrixInverseX_, arrowMesh_LocalX_)))
 		{
 			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
 			{
@@ -295,7 +295,7 @@ bool ModifierHandle::is_hit(const Ray& ray)
 				hit = true;
 			}
 		}
-		if (rayResultHelp = is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_))
+		if ((rayResultHelp = is_hit(ray, modelMatrixInverseY_, arrowMesh_LocalY_)))
 		{
 			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
 			{
@@ -304,7 +304,7 @@ bool ModifierHandle::is_hit(const Ray& ray)
 				hit = true;
 			}
 		}
-		if (rayResultHelp = is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_))
+		if ((rayResultHelp = is_hit(ray, modelMatrixInverseZ_, arrowMesh_LocalZ_)))
 		{
 			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
 			{
@@ -316,7 +316,7 @@ bool ModifierHandle::is_hit(const Ray& ray)
 	}
 	else if (is_rotationMode())
 	{
-		if (rayResultHelp = is_hit(ray, modelMatrixInverseRotationX_, torusMesh_RotationX_))
+		if ((rayResultHelp = is_hit(ray, modelMatrixInverseRotationX_, torusMesh_RotationX_)))
 		{
 			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
 			{
@@ -325,7 +325,7 @@ bool ModifierHandle::is_hit(const Ray& ray)
 				hit = true;
 			}
 		}
-		if (rayResultHelp = is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_))
+		if ((rayResultHelp = is_hit(ray, modelMatrixInverseRotationY_, torusMesh_RotationY_)))
 		{
 			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
 			{
@@ -334,7 +334,7 @@ bool ModifierHandle::is_hit(const Ray& ray)
 				hit = true;
 			}
 		}
-		if (rayResultHelp = is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_))
+		if ((rayResultHelp = is_hit(ray, modelMatrixInverseRotationZ_, torusMesh_RotationZ_)))
 		{
 			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
 			{
@@ -346,7 +346,7 @@ bool ModifierHandle::is_hit(const Ray& ray)
 	}
 	else if (is_scaleMode())
 	{
-		if (rayResultHelp = is_hit(ray, modelMatrixScaleInverseX_, scaleMesh_ScaleX_))
+		if ((rayResultHelp = is_hit(ray, modelMatrixScaleInverseX_, scaleMesh_ScaleX_)))
 		{
 			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
 			{
@@ -355,7 +355,7 @@ bool ModifierHandle::is_hit(const Ray& ray)
 				hit = true;
 			}
 		}
-		if (rayResultHelp = is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_))
+		if ((rayResultHelp = is_hit(ray, modelMatrixScaleInverseY_, scaleMesh_ScaleY_)))
 		{
 			if (!rayResult.has_value() || rayResultHelp.value() < rayResult.value())
 			{

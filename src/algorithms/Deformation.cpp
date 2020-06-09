@@ -1,7 +1,6 @@
 #include "Deformation.hpp"
 #include <pmp/algorithms/DifferentialGeometry.h>
 #include <pmp/algorithms/SurfaceNormals.h>
-#include <chrono>
 #include <Eigen/Dense>
 #include <unordered_set>
 
@@ -326,8 +325,6 @@ namespace algorithm {
 
 	void Deformation::compute_higher_order()
 	{
-		auto start = std::chrono::high_resolution_clock::now();
-
 		const std::size_t numFree = supportVertices_.size();
 		const std::size_t numFixed = handleVertices_.size() + boundaryVertices_.size();
 
@@ -384,9 +381,6 @@ namespace algorithm {
 		const DenseMatrix B2 = -laplace2_ * x3;
 
 		boundarySolution_ = solver_->solve(B2, "boundary vertices");
-
-		auto end = std::chrono::high_resolution_clock::now();
-	//	std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
 	}
 
 	void Deformation::update_operator()
@@ -524,7 +518,6 @@ namespace algorithm {
 
 	void Deformation::store_details()
 	{
-		auto start = std::chrono::high_resolution_clock::now();
 		// store low res positions for normal computations
 		for (Vertex v : supportVertices_) 
 			points_[v] = lowResPositions_[v];
@@ -592,8 +585,6 @@ namespace algorithm {
 		// restore high resolution representation
 		for (Vertex v : supportVertices_) 
 			points_[v] = initialPositions_[v];
-		auto end = std::chrono::high_resolution_clock::now();
-	//	std::cout << std::chrono::duration<float>(end - start).count() << std::endl;
 	}
 
 	void Deformation::compute_details()

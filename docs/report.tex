@@ -84,7 +84,6 @@ Similar to \eqref{lsg}, we can integrate the fixed boundary and make the system 
 with the sparse $LDL^T$ decomposition, where $M_1$ are the area weights of vertices associated with $s$.
 Since the Laplace-Beltrami operator \eqref{laplace} is used, the points should only move in normal direction.
 Thus, the resulting displacement is encoded per vertex in a local frame, defined by its normal and one edge. Optionally, other vertices in the \textit{n-ring} can be considered to find the local frame where the displacement vector has the smallest length. Also proposed in \cite{kobbelt1998interactive}, this leads to fewer anomalies in the reconstructed surface, as seen in Figure~\ref{fig:searchRing}.
-% todo: how are normals computed
 \begin{figure}
 	\includegraphics[width=0.5\textwidth]{searchframe.png}
 	\caption{Detail reconstruction using the local frame of each vertex (left) and the frame with the shortest displacement vector in the 4-ring neighbourhood (right). }
@@ -96,7 +95,7 @@ To evaluate the usability of our tool, we measure the performance for both modif
 Times are measured on a i5-6600k ($4 \times 3.50$GHz) with 16GB DDR4 running Win10 Pro 64bit.
 The test scenario consists of a mesh with 125k vertices, with a handle region containing 15k and the support region 35k vertices. \\
 %The measured times are the average of 500 measured values.
-First we consider modifications to the mesh. Updating the support vertices takes just $1.6\si{ms}$, adding the details another $21.6\si{ms}$, resulting in a smooth framerate overall for editing.
+First we consider modifications to the mesh. Updating the support vertices takes just $1.6\si{ms}$, adding the details another $21.6\si{ms}$, resulting overall in a smooth framerate for editing.
 \begin{table}
 	\centering
 	\caption{Measurements for updates to the operator.}
@@ -110,8 +109,8 @@ First we consider modifications to the mesh. Updating the support vertices takes
 		\hline
 	\end{tabular}
 	\label{tab:order}
-\end{table}
-Parameter changes require recomputing the higher order operator and precomputing \eqref{lsg}. Times for this are recorded in Table~\ref{tab:order}. A higher order significantly increases computation times and so does the switch to the $LU$ solver for smoothness. Still, a wait time of up to 6s makes it possible to just try different configurations during editing.
+\end{table}\\
+Parameter changes require recomputing the higher order operator and precomputing \eqref{lsg}. Times for this are recorded in Table~\ref{tab:order}. A higher order significantly increases computation times and so does the switch to the $LU$ solver for smoothness. Still, a wait time of up to 6s makes it possible to just try out different configurations during editing.
 \begin{table}
 	\centering
 	\caption{Measurements for updates to the smoothing step.}
@@ -129,7 +128,8 @@ Parameter changes require recomputing the higher order operator and precomputing
 	\label{tab:smoothing}
 \end{table}\\
 Similar values are observed for the smoothing-step in Table~\ref{tab:smoothing}.
-Considering that the editing already requires a fixed boundary, the extra implicit smoothing is only useful in cases where full reconstruction is not feasible due to strongly stretched or compressed areas. Thus, this time can mostly be saved. A larger seach ring however, can be beneficial in both cases. Above a value of $10$, few differences where observed and the affordable performance when compared to the third order operator compution, this option can always be applied.
+Considering that the editing already requires a fixed boundary, the extra implicit smoothing is only useful in edge cases where full reconstruction is not feasible due to strongly stretched or compressed areas. Thus, this time can mostly be saved. A larger seach ring however, can be beneficial in both cases. Above a value of $10$, few differences where observed and with the affordable performance when compared to the third order operator computation, this option can always be used.
+
 \bibliographystyle{ieeetr}
 \bibliography{references}
 

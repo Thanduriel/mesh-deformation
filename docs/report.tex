@@ -41,7 +41,7 @@ l_{ij} = l_{ji} = \begin{cases} e_{ij} & i \neq j, \text{edge i-j exists} \\ -\s
 where $N_1(p)$ is the one-ring of $p$. To improve numerical robustness for poor triangulations, the edge weights are computed by clamping extreme $\cot$ angles to the range $[0+c,\ang{180}-c]$
 \begin{align*}
 e_{ij} &= \max(0, f(\cot \alpha_{ij}) + f(\cot \beta_{ij})) \\
-f(x) &= \max(\cot c, \min(x, \cot \ang{180}-c)).
+f(x) &= \max(\cot c, \min(x, \cot (\ang{180}-c))).
 \end{align*}
 We use $c = \ang{3}$.\\
 With \eqref{laplace} we can introduce the higher \textit{order} operators $\triangle^k$ where $k=1$ deforms the surface like a membrane by minimizing the area, $k=2$ characterizes thin plate surfaces which minimize
@@ -112,7 +112,7 @@ First we consider modifications to the mesh. Updating the support vertices takes
 Parameter changes require recomputing the higher order operator and precomputing \eqref{lsg}. Times for this are recorded in Table~\ref{tab:order}. A higher order significantly increases computation times and so does the switch to the $LU$ solver for smoothness. Still, a wait time of up to 6s makes it possible to just try out different configurations during editing.
 \begin{table}
 	\centering
-	\caption{Measurements for updates to the smoothing step.}
+	\caption{Measurements for changes to the smoothing.}
 	\begin{tabular}{lc}
 		parameter & time [ms] \\
 		\hline
@@ -127,7 +127,7 @@ Parameter changes require recomputing the higher order operator and precomputing
 	\label{tab:smoothing}
 \end{table}\\
 Similar values are observed for the smoothing-step in Table~\ref{tab:smoothing}.
-Considering that the editing already requires a fixed boundary, the extra implicit smoothing is only useful in edge cases where full reconstruction is not feasible due to strongly stretched or compressed areas. Thus, this time can mostly be saved. A larger seach ring however, can be beneficial in both cases. Above a value of $10$, few differences where observed and with the affordable performance when compared to the third order operator computation, this option can always be used.
+Considering that the editing already requires a fixed boundary, the extra implicit smoothing is only useful in edge cases where full reconstruction is not feasible due to strongly stretched or compressed areas. Thus, this time can mostly be saved. A larger seach ring however, can be beneficial in both cases. Above a value of $10$, few differences where observed and considering the extra cost of around $\frac{1}{3}$ of a third order operator computation in this case, this option can always be used.
 
 \bibliographystyle{ieeetr}
 \bibliography{references}

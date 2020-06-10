@@ -94,7 +94,6 @@ Thus, the resulting displacement is encoded per vertex in a local frame, defined
 To evaluate the usability of our tool, we measure the performance for both modifications to the mesh and parameter changes of the operator.
 Times are measured on a i5-6600k ($4 \times 3.50$GHz) with 16GB DDR4 running Win10 Pro 64bit.
 The test scenario consists of a mesh with 125k vertices, with a handle region containing 15k and the support region 35k vertices. \\
-%The measured times are the average of 500 measured values.
 First we consider modifications to the mesh. Updating the support vertices takes just $1.6\si{ms}$, adding the details another $21.6\si{ms}$, resulting overall in a smooth framerate for editing.
 \begin{table}
 	\centering
@@ -105,7 +104,7 @@ First we consider modifications to the mesh. Updating the support vertices takes
 		order 1 & 276.77 \\
 		order 2 & 922.87 \\
 		order 3 & 2262.19 \\
-		smoothness & ??? \\
+		smoothness & 5692.42 \\
 		\hline
 	\end{tabular}
 	\label{tab:order}

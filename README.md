@@ -10,6 +10,7 @@ Supported formats include `off`,`obj` and `stl`, for the full list see the  [pmp
 To build the project just clone the repo with submodules:
 
     git clone --recursive https://github.com/Thanduriel/mesh-deformation.git
+	cd mesh-deformation
 	mkdir build
 	cd build
 	cmake ..

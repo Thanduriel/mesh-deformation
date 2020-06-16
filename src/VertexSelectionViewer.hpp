@@ -81,6 +81,9 @@ private:
 	pmp::vec2 compute_screenCoordinates(pmp::vec3 vec);
 	pmp::vec3 compute_WorldCoordinates(pmp::vec2 vec, float zf);
 
+	void increase_area(VertexDrawingMode _mode);
+	void decrease_area(VertexDrawingMode _mode);
+
 	struct SphereQuery
 	{
 		bool descend(const pmp::vec3& center, double size) const;
@@ -95,6 +98,8 @@ private:
 	// gui options
 	VertexDrawingMode vertexDrawingMode_ = VertexDrawingMode::None;
 	float brushSize_;
+	bool lockHandle_ = true;
+
 	float detailStrength_ = 0.001;
 	bool useImplictSmoothing_ = false;
 	bool showDetails_ = true;

@@ -50,6 +50,8 @@ VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int h
 	add_help_item("W", "Support region brush");
 	add_help_item("E", "Clear region brush");
 	add_help_item("R", "Activate view mode");
+	add_help_item("A", "increase current area");
+	add_help_item("S", "decrease current area");
 	add_help_item("SPACE", "Switch deformation mode / drawing mode");
 	add_help_item("CTRL + Z", "Undo last modification");
 	add_help_item("T", "Activate translation mode");
@@ -137,6 +139,12 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			{
 				set_viewer_mode(ViewerMode::Translation);
 			}
+			return;
+		case GLFW_KEY_A:
+			increase_area(vertexDrawingMode_);
+			return;
+		case GLFW_KEY_S:
+			decrease_area(vertexDrawingMode_);
 			return;
 		}
 	}
@@ -429,6 +437,21 @@ void VertexSelectionViewer::process_imgui()
 
 		const BoundingBox bb = mesh_.bounds();
 		ImGui::SliderFloat("brush size", &brushSize_, 0.0001, bb.size() * 0.5);
+
+		// area modifiers
+		ImGui::Text("modify area");
+		ImGui::SameLine();
+		if (ImGui::Button("+ [A]"))
+		{
+			increase_area(vertexDrawingMode_);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("- [S]"))
+		{
+			decrease_area(vertexDrawingMode_);
+		}
+		ImGui::SameLine();
+		ImGui::Checkbox("lock handle", &lockHandle_);
 	}
 
 	// modifications
@@ -687,11 +710,11 @@ bool VertexSelectionViewer::init_modifier()
 
 	for (Vertex v : mesh_.vertices())
 	{
-		if (colors[v] == Color(0, 1, 0))
+		if (colors[v] == COLORS[static_cast<size_t>(VertexDrawingMode::Handle)])
 		{
 			handleVertices.push_back(v);
 		}
-		else if (colors[v] == Color(0, 0, 1))
+		else if (colors[v] == COLORS[static_cast<size_t>(VertexDrawingMode::Support)])
 		{
 			supportVertices.push_back(v);
 		}
@@ -866,6 +889,62 @@ vec3 VertexSelectionViewer::compute_WorldCoordinates(vec2 vec, float zf)
 	p /= p[3];
 
 	return vec3(p[0], p[1], p[2]);
+}
+
+void VertexSelectionViewer::increase_area(VertexDrawingMode _mode)
+{
+	auto colors = mesh_.get_vertex_property<Color>("v:col");
+	const Color& col = COLORS[static_cast<size_t>(_mode)];
+
+	std::vector<Vertex> neighbours;
+	for (Vertex v : mesh_.vertices())
+	{
+		if (colors[v] == col)
+		{
+			for (auto h : mesh_.halfedges(v))
+			{
+				const Vertex vv = mesh_.to_vertex(h);
+				if (colors[vv] != col && (!lockHandle_ 
+					|| colors[vv] != COLORS[static_cast<size_t>(VertexDrawingMode::Handle)]))
+					neighbours.push_back(vv);
+			}
+		}
+	}
+
+	for (Vertex v : neighbours)
+		colors[v] = col;
+
+	meshIsDirty_ |= MeshUpdate::VertexColor;
+}
+
+void VertexSelectionViewer::decrease_area(VertexDrawingMode _mode)
+{
+	auto colors = mesh_.get_vertex_property<Color>("v:col");
+	const Color& col = COLORS[static_cast<size_t>(_mode)];
+
+	std::vector<Vertex> border;
+	std::vector<Color> newColors;
+	for (Vertex v : mesh_.vertices())
+	{
+		if (colors[v] == col)
+		{
+			for (auto h : mesh_.halfedges(v))
+			{
+				const Vertex vv = mesh_.to_vertex(h);
+				if (colors[vv] != col && (!lockHandle_
+					|| colors[vv] != COLORS[static_cast<size_t>(VertexDrawingMode::Handle)]))
+				{
+					newColors.push_back(colors[vv]);
+					border.push_back(v);
+				}
+			}
+		}
+	}
+
+	for (size_t i = 0; i < border.size(); ++i)
+		colors[border[i]] = newColors[i];
+
+	meshIsDirty_ |= MeshUpdate::VertexColor;
 }
 
 bool VertexSelectionViewer::SphereQuery::descend(const pmp::vec3& center, double size) const

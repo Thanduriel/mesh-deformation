@@ -50,8 +50,8 @@ VertexSelectionViewer::VertexSelectionViewer(const char* title, int width, int h
 	add_help_item("W", "Support region brush");
 	add_help_item("E", "Clear region brush");
 	add_help_item("R", "Activate view mode");
-	add_help_item("A", "increase current area");
-	add_help_item("S", "decrease current area");
+	add_help_item("A", "grow current region");
+	add_help_item("S", "shrink current region");
 	add_help_item("SPACE", "Switch deformation mode / drawing mode");
 	add_help_item("CTRL + Z", "Undo last modification");
 	add_help_item("T", "Activate translation mode");
@@ -141,10 +141,10 @@ void VertexSelectionViewer::keyboard(int key, int scancode, int action, int mods
 			}
 			return;
 		case GLFW_KEY_A:
-			increase_area(vertexDrawingMode_);
+			grow_region(vertexDrawingMode_);
 			return;
 		case GLFW_KEY_S:
-			decrease_area(vertexDrawingMode_);
+			shrink_region(vertexDrawingMode_);
 			return;
 		}
 	}
@@ -443,12 +443,12 @@ void VertexSelectionViewer::process_imgui()
 		ImGui::SameLine();
 		if (ImGui::Button("+ [A]"))
 		{
-			increase_area(vertexDrawingMode_);
+			grow_region(vertexDrawingMode_);
 		}
 		ImGui::SameLine();
 		if (ImGui::Button("- [S]"))
 		{
-			decrease_area(vertexDrawingMode_);
+			shrink_region(vertexDrawingMode_);
 		}
 		ImGui::SameLine();
 		ImGui::Checkbox("lock handle", &lockHandle_);
@@ -891,7 +891,7 @@ vec3 VertexSelectionViewer::compute_WorldCoordinates(vec2 vec, float zf)
 	return vec3(p[0], p[1], p[2]);
 }
 
-void VertexSelectionViewer::increase_area(VertexDrawingMode _mode)
+void VertexSelectionViewer::grow_region(VertexDrawingMode _mode)
 {
 	auto colors = mesh_.get_vertex_property<Color>("v:col");
 	const Color& col = COLORS[static_cast<size_t>(_mode)];
@@ -917,7 +917,7 @@ void VertexSelectionViewer::increase_area(VertexDrawingMode _mode)
 	meshIsDirty_ |= MeshUpdate::VertexColor;
 }
 
-void VertexSelectionViewer::decrease_area(VertexDrawingMode _mode)
+void VertexSelectionViewer::shrink_region(VertexDrawingMode _mode)
 {
 	auto colors = mesh_.get_vertex_property<Color>("v:col");
 	const Color& col = COLORS[static_cast<size_t>(_mode)];

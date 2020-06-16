@@ -81,8 +81,8 @@ private:
 	pmp::vec2 compute_screenCoordinates(pmp::vec3 vec);
 	pmp::vec3 compute_WorldCoordinates(pmp::vec2 vec, float zf);
 
-	void increase_area(VertexDrawingMode _mode);
-	void decrease_area(VertexDrawingMode _mode);
+	void grow_region(VertexDrawingMode _mode);
+	void shrink_region(VertexDrawingMode _mode);
 
 	struct SphereQuery
 	{

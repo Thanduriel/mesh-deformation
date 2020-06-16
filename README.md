@@ -31,6 +31,8 @@ Remark: If you have selected one of the draw modes above, you can't rotate the m
 	Q: Draws handle region
 	E: Clears region
 	R: Go back into the view mode
+	A: Grow current region
+	S: Shrink current region
 	BACKSPACE: Reload mesh
 
 After you marked some region on your mesh, press `SPACE` to go into the operator mode. In this mode you can't draw any more regions on your mesh. For this go back into the draw mode by pressing the `SPACE` button again.

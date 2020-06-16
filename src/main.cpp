@@ -9,7 +9,7 @@
 #endif
 #endif
 
-int main()
+int main(int paraNum, char* arg[])
 {
 	// no leaks should be detected iff the window is closed via the [x] button
 	// ESC just calls exit(0) 
@@ -20,8 +20,14 @@ int main()
 #endif
 #endif
 
+
 	using namespace pmp;
 	const char* meshFile = "../dependencies/pmp-library/external/pmp-data/off/bunny.off";
+	if (paraNum > 1)
+	{
+		meshFile = arg[1];
+	}
+
 	VertexSelectionViewer window("mesh-deformation", 1366, 768);
 	window.load_mesh(meshFile);
 	window.run();

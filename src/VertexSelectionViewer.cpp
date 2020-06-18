@@ -4,6 +4,7 @@
 #include <imgui_internal.h>
 #include <array>
 #include <chrono>
+#include <cstring>
 
 using namespace pmp;
 
@@ -219,8 +220,7 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 	// load mesh
 	if (mesh_.read(filename))
 	{
-		
-		strcpy_s(fileNameBuffer_, filename);
+		std::strcpy(fileNameBuffer_, filename);
 
 		// update scene center and bounds
 		BoundingBox bb = mesh_.bounds();

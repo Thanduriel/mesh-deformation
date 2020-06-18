@@ -69,7 +69,7 @@ void SurfaceColorMesh::draw(const mat4& projection_matrix, const mat4& modelview
 	if (!color_shader_)
 	{
 		color_shader_ = new Shader();
-		if (!color_shader_->load("../shaders/colorShader_vs.glsl", "../shaders/colorShader_fs.glsl"))
+		if (!color_shader_->load("../shaders/ColorShader_vs.glsl", "../shaders/ColorShader_fs.glsl"))
 			exit(1);
 	}
 

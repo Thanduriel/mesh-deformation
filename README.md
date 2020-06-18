@@ -15,7 +15,7 @@ To build the project just clone the repo with submodules:
 	cd build
 	cmake ..
 
-Tested with gcc 8.1 and MSVC 2019.
+Tested with gcc 8.1 and MSVC 2019 (windows) and gcc 9.2.1 (ubuntu).
 
 ## Getting Started
 

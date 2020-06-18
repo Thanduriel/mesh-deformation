@@ -1,5 +1,6 @@
 #include "Intersection.hpp"
 #include <limits>
+#include <cstring>
 
 namespace algorithm {
 
@@ -30,9 +31,8 @@ namespace algorithm {
 
 		// std conform reinterpret cast
 		int res;
-		memcpy(&res, &f, sizeof(float));
+		std::memcpy(&res, &f, sizeof(float));
 		return res;
-		//return *reinterpret_cast<int*>(&f);
 	}
 
 	static bool intersect(vec3 o, vec3 d, float* t, const IntersectionTriangle& D)

@@ -55,6 +55,6 @@ add_executable(modeller ${SOURCE_FILES})
 target_link_libraries( modeller pmp_vis )
 
 if(NOT MSVC)
-	target_compile_options(modeller PRIVATE "$<$<CONFIG:DEBUG>:-Wall>")
-	target_compile_options(modeller PRIVATE "$<$<CONFIG:RELEASE>:-Wall;-O3;-march=native>")
+	target_compile_options(modeller PRIVATE "$<$<CONFIG:DEBUG>:-Wall;-pedantic>")
+	target_compile_options(modeller PRIVATE "$<$<CONFIG:RELEASE>:-Wall;-pedantic;-O3;-march=native>")
 endif()

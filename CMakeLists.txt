@@ -12,6 +12,8 @@ if (MSVC)
 	add_compile_options(/wd4267)
 	add_compile_options(/wd4244)
 	add_compile_options(/wd4305)
+	# strcpy unsafe
+	add_compile_options(/wd4996)
 endif()
 
 #pmp
@@ -23,7 +25,6 @@ add_subdirectory (${DEPENDENCIES_DIR}/pmp-library)
 
 
 #pmp libraries
-#include_directories(${DEPENDENCIES_DIR}/pmp-library/src)
 include_directories(${DEPENDENCIES_DIR}/pmp-library/external/imgui)
 include_directories(${DEPENDENCIES_DIR}/pmp-library/external/eigen)
 include_directories(${DEPENDENCIES_DIR}/pmp-library/external/glfw/include)

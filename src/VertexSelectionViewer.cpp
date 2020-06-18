@@ -220,7 +220,13 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 	// load mesh
 	if (mesh_.read(filename))
 	{
-		std::strcpy(fileNameBuffer_, filename);
+		if (std::strlen(filename) > fileNameBuffer_.size())
+		{
+			std::cerr << "Path is to long " << filename << " !" << std::endl;
+			return false;
+		}
+
+		std::strcpy(fileNameBuffer_.data(), filename);
 
 		// update scene center and bounds
 		BoundingBox bb = mesh_.bounds();
@@ -402,15 +408,15 @@ std::vector<Vertex> VertexSelectionViewer::pick_vertex(int x, int y, float radiu
 void VertexSelectionViewer::process_imgui()
 {
 	// general file handling
-	ImGui::InputText("", fileNameBuffer_, 512);
+	ImGui::InputText("", fileNameBuffer_.data(), fileNameBuffer_.size());
 	if (ImGui::Button("open"))
 	{
-		if (load_mesh(fileNameBuffer_)) set_viewer_mode(ViewerMode::View);
+		if (load_mesh(fileNameBuffer_.data())) set_viewer_mode(ViewerMode::View);
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("save"))
 	{
-		mesh_.write(fileNameBuffer_);
+		mesh_.write(fileNameBuffer_.data());
 	}
 
 	// region selection

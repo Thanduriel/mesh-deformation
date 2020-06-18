@@ -4,6 +4,7 @@
 #include <pmp/visualization/TrackballViewer.h>
 #include <imgui.h>
 #include <memory>
+#include <array>
 
 namespace algorithm {
 	class Deformation;
@@ -111,7 +112,7 @@ private:
 	bool useAreaScaling_ = false;
 	const char* currentVertexDrawItem_ = nullptr;
 	const char* currentModifierItem_ = nullptr;
-	char fileNameBuffer_[512] = {};
+	std::array<char,512> fileNameBuffer_ = {};
 
 	util::Octree<pmp::Vertex, 4> queryTree_; // point tree for fast local searches
 	std::unique_ptr<algorithm::Deformation> deformationSpace_;

@@ -1,6 +1,6 @@
 #include "SurfaceColorMesh.hpp"
-
 #include <pmp/algorithms/SurfaceNormals.h>
+#include <filesystem>
 
 using namespace pmp;
 
@@ -69,8 +69,23 @@ void SurfaceColorMesh::draw(const mat4& projection_matrix, const mat4& modelview
 	if (!color_shader_)
 	{
 		color_shader_ = new Shader();
-		if (!color_shader_->load("../shaders/ColorShader_vs.glsl", "../shaders/ColorShader_fs.glsl"))
+		
+		// look in current directory
+		if (std::filesystem::exists("shaders/ColorShader_vs.glsl"))
+		{
+			if (!color_shader_->load("shaders/ColorShader_vs.glsl", "shaders/ColorShader_fs.glsl"))
+				exit(1);
+		} 
+		else if (std::filesystem::exists("../shaders/ColorShader_vs.glsl"))// try folder above
+		{
+			if (!color_shader_->load("../shaders/ColorShader_vs.glsl", "../shaders/ColorShader_fs.glsl"))
+				exit(1);
+		}
+		else
+		{
+			std::cerr << "Could not find shaders in 'shaders/' or '../shaders/'. Looking for 'ColorShader_vs.glsl' and 'ColorShader_fs.glsl' !";
 			exit(1);
+		}
 	}
 
 	// empty mesh?

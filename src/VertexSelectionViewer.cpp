@@ -232,6 +232,7 @@ bool VertexSelectionViewer::load_mesh(const char* filename)
 		BoundingBox bb = mesh_.bounds();
 		set_scene((vec3)bb.center(), 0.5 * bb.size());
 		meshHandle_.set_scale(vec3(bb.size() * 0.1f));
+		brushSize_ = bb.size() * 0.08f;
 
 		// compute face & vertex normals, update face indices
 		update_mesh();
